@@ -1,65 +1,1099 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Get Token</title><style>body{background:#060a18;color:#e2e8f0;font-family:system-ui;padding:12px}button{background:#22c55e;color:#000;font-weight:900;border:none;padding:15px;border-radius:14px;width:100%;font-size:16px}textarea{width:100%;background:#0a1228;color:#fff;border:1px solid #233865;border-radius:12px;padding:12px;margin-top:8px;min-height:200px}.card{background:#0f1933;border:1px solid #1f2f5e;border-radius:18px;padding:14px;margin:12px 0}.ok{color:#22c55e}.err{color:#f87171}</style></head><body>
-<h2>🔑 Auto Get eyJ Token</h2>
-<div class="card">
-<b>Your ID & Secret don already put inside</b><br>
-<button onclick="getToken()">🚀 Click to Fetch eyJ Token Now</button>
-<div id="status"></div>
-<textarea id="tokenOut" placeholder="eyJ token go show here..."></textarea>
-<button onclick="copyToken()">📋 Copy Token</button>
-</div>
-<script>
-const CLIENT_ID="partners-35afad7ea8aa44418f245b47ad75e19e";
-const CLIENT_SECRET="n3bepbxtDkvAApksyqc2h4AjrlauMz*vwYGQUiV!1k!xidbjRf9C4GyULua6YJwY";
-async function getToken(){
-  const status=document.getElementById('status');
-  const out=document.getElementById('tokenOut');
-  status.innerHTML="⏳ Fetching token via proxy...";
-  const tokenUrl="https://cpservm.com/gateway/token";
-  // Try 3 proxies wey no need API key
-  const proxies=[
-    (url)=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    (url)=>`https://thingproxy.freeboard.io/fetch/${url}`,
-    (url)=>`https://corsproxy.org/?${encodeURIComponent(url)}`
-  ];
-  for(let p of proxies){
-    try{
-      const proxyUrl=p(tokenUrl);
-      const body=`client_id=${encodeURIComponent(CLIENT_ID)}&client_secret=${encodeURIComponent(CLIENT_SECRET)}&grant_type=client_credentials`;
-      const res=await fetch(proxyUrl,{
-        method:"POST",
-        headers:{"Content-Type":"application/x-www-form-urlencoded"},
-        body:body
-      });
-      const txt=await res.text();
-      console.log("Proxy response:",txt.substring(0,500));
-      let data;
-      try{ data=JSON.parse(txt); }catch{ 
-        // allorigins sometimes returns wrapped JSON
-        try{ data=JSON.parse(JSON.parse(txt).contents); }catch{ data=null; }
-      }
-      // Check different response formats
-      let token=data?.access_token || data?.accessToken || data?.token || null;
-      if(!token && txt.includes("access_token")){
-        const m=txt.match(/"access_token"\s*:\s*"([^"]+)"/);
-        if(m) token=m[1];
-      }
-      if(token){
-        out.value=token;
-        status.innerHTML=`<span class='ok'>✅ SUCCESS! Token length ${token.length}. Copy am now and paste for auto.html Step 1!</span>`;
-        localStorage.setItem('sure2odd_bearer',token);
-        return;
-      }
-      status.innerHTML=`Trying next proxy... Response: ${txt.substring(0,200)}`;
-    }catch(e){
-      console.log("Proxy failed",e);
-      status.innerHTML=`Proxy failed, trying next... ${e.message}`;
-    }
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StudyDesk — interactive preview</title><meta name="theme-color" content="#070B20"><style>:root {
+  --bg: #070B20; --bg2: #0B1030; --card: #111735; --card2: #151D43; --border: #252B58;
+  --purple: #A855F7; --deep: #6D28D9; --blue: #2563EB; --cyan: #06B6D4; --green: #10B981;
+  --orange: #F59E0B; --gold: #FACC15; --text: #F4F3FF; --muted: #A5ADD0;
+  --sidebar-w: 280px; --header-h: 68px; --radius: 16px;
+  --font: Inter, "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; overflow-x: hidden; }
+a { color: inherit; text-decoration: none; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3, h4, p { margin: 0; }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+
+/* Layout */
+.app { min-height: 100vh; background:
+  radial-gradient(900px 500px at 85% -10%, rgba(109,40,217,.22), transparent 60%),
+  radial-gradient(700px 400px at 10% 110%, rgba(37,99,235,.14), transparent 60%), var(--bg); }
+.sidebar { position: fixed; inset: 0 auto 0 0; width: var(--sidebar-w); background: var(--bg2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; z-index: 60; transition: transform .25s ease; }
+.main-col { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; min-width: 0; }
+.header { position: sticky; top: 0; z-index: 40; height: var(--header-h); display: flex; align-items: center; gap: 12px; padding: 0 28px;
+  background: rgba(7,11,32,.82); backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); }
+.content { padding: 28px; flex: 1; min-width: 0; max-width: 1280px; width: 100%; margin: 0 auto; }
+.scrim { display: none; }
+
+/* Sidebar */
+.brand { display: flex; align-items: center; gap: 12px; padding: 20px 20px 14px; }
+.brand img { width: 40px; height: 40px; }
+.brand-name { font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
+.brand-tag { font-size: 12px; color: var(--muted); }
+.nav { flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; }
+.nav-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid transparent;
+  background: none; color: var(--muted); font-size: 14.5px; font-weight: 600; text-align: left; transition: background .15s, color .15s; }
+.nav-item:hover { background: var(--card); color: var(--text); }
+.nav-item.active { background: linear-gradient(90deg, rgba(168,85,247,.22), rgba(37,99,235,.12)); color: var(--text); border-color: rgba(168,85,247,.45); }
+.nav-item .chev { margin-left: auto; transition: transform .2s; }
+.nav-item.open .chev { transform: rotate(180deg); }
+.sub { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
+.sub.open { grid-template-rows: 1fr; }
+.sub > div { overflow: hidden; margin-left: 22px; padding-left: 10px; border-left: 1px solid var(--border); }
+.sub a { display: block; padding: 8px 12px; margin: 2px 0; border-radius: 10px; font-size: 13.5px; color: var(--muted); }
+.sub a:hover { color: var(--text); background: var(--card); }
+.sub a.active { color: var(--text); background: rgba(168,85,247,.18); font-weight: 600; }
+.side-promos { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.pro-mini { background: var(--card2); border: 1px solid rgba(168,85,247,.4); border-radius: 14px; padding: 14px; }
+.pro-mini h4 { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.pro-mini p { color: var(--muted); font-size: 12.5px; margin: 6px 0 10px; }
+.study-card { border-radius: 14px; padding: 14px; background: linear-gradient(135deg, #2a1065, #151D43); border: 1px solid var(--border); position: relative; overflow: hidden; }
+.study-card strong { display: block; font-size: 14px; }
+.study-card span { font-size: 12px; color: var(--muted); }
+@media (max-height: 760px) { .study-card { display: none; } }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--card2); font-weight: 600; font-size: 14px; transition: transform .12s, border-color .15s, background .15s; min-height: 42px; }
+.btn:hover { border-color: var(--purple); }
+.btn:active { transform: scale(.98); }
+.btn-primary { background: linear-gradient(135deg, var(--purple), var(--deep) 55%, var(--blue)); border-color: transparent; box-shadow: 0 8px 24px rgba(109,40,217,.35); }
+.btn-primary:hover { border-color: transparent; filter: brightness(1.1); }
+.btn-gold { background: linear-gradient(135deg, #FACC15, #F59E0B); color: #1b1303; border-color: transparent; }
+.btn-sm { padding: 7px 12px; min-height: 36px; font-size: 13px; border-radius: 10px; }
+.btn-block { width: 100%; }
+.icon-btn { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; border: 1px solid var(--border); background: var(--card); position: relative; }
+.icon-btn:hover { border-color: var(--purple); }
+.menu-btn { display: none; }
+
+/* Header search */
+.search { position: relative; flex: 1; max-width: 560px; }
+.search-box { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 0 14px; height: 44px; }
+.search-box:focus-within { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(168,85,247,.2); }
+.search-box input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; }
+.search-box input::placeholder { color: var(--muted); }
+.kbd { font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; background: var(--bg2); }
+.dropdown { position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.5); padding: 6px; z-index: 70; max-height: 70vh; overflow-y: auto; }
+.result { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 10px; width: 100%; background: none; border: 0; text-align: left; }
+.result.sel, .result:hover { background: rgba(168,85,247,.18); }
+.result .ri { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--card2); color: var(--purple); flex: none; }
+.result small { display: block; color: var(--muted); font-size: 12px; }
+.empty { padding: 18px; text-align: center; color: var(--muted); font-size: 14px; }
+.dot { position: absolute; top: 9px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--orange); }
+.pop { position: absolute; right: 0; top: calc(100% + 8px); width: 300px; max-width: 86vw; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 20px 50px rgba(0,0,0,.5); z-index: 70; }
+.pop h4 { margin-bottom: 8px; }
+.pop p { color: var(--muted); font-size: 13.5px; padding: 8px 0; border-top: 1px solid var(--border); }
+
+/* Cards & grids */
+.card { background: linear-gradient(160deg, rgba(21,29,67,.9), rgba(17,23,53,.9)); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.grid { display: grid; gap: 16px; }
+.g5 { grid-template-columns: repeat(5, 1fr); }
+.g4 { grid-template-columns: repeat(4, 1fr); }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+.g2 { grid-template-columns: repeat(2, 1fr); }
+.section { margin-top: 36px; }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.section-head h2 { font-size: 22px; letter-spacing: -.2px; }
+.link { color: var(--purple); font-weight: 600; font-size: 14px; background: none; border: 0; padding: 0; }
+.link:hover { text-decoration: underline; }
+.gradient-text { background: linear-gradient(90deg, #C084FC, #A855F7 40%, #60A5FA); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Hero */
+.hero { position: relative; overflow: hidden; border-radius: 24px; padding: 44px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px; align-items: center;
+  background: linear-gradient(120deg, #0f1a5c 0%, #3b1a8a 55%, #5b21b6 100%); border: 1px solid rgba(168,85,247,.45); box-shadow: 0 24px 70px rgba(109,40,217,.28); }
+.hero::before { content: ""; position: absolute; inset: 0; background:
+  repeating-linear-gradient(115deg, rgba(255,255,255,.04) 0 1px, transparent 1px 46px); pointer-events: none; }
+.hero h1 { font-size: clamp(30px, 4.2vw, 50px); line-height: 1.1; letter-spacing: -1px; font-weight: 800; }
+.hero p { color: #d6d3ff; margin: 16px 0 24px; max-width: 520px; font-size: 16.5px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.hero-art { position: relative; z-index: 1; display: grid; place-items: center; }
+.hero-art svg { width: 100%; max-width: 380px; height: auto; }
+
+/* Category cards */
+.cat { border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 10px; min-height: 210px; border: 1px solid rgba(255,255,255,.14);
+  transition: transform .18s, box-shadow .18s; text-align: left; color: #fff; }
+.cat:hover { transform: translateY(-4px); box-shadow: 0 16px 36px rgba(0,0,0,.4); }
+.cat .ci { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: rgba(255,255,255,.2); }
+.cat h3 { font-size: 17px; }
+.cat p { font-size: 13px; opacity: .9; flex: 1; }
+.cat .go { display: inline-flex; align-items: center; justify-content: center; align-self: flex-start; padding: 7px 16px; border-radius: 10px; background: rgba(255,255,255,.22); font-weight: 600; font-size: 13px; }
+.c-blue { background: linear-gradient(145deg, #2563EB, #1e3a8a); }
+.c-green { background: linear-gradient(145deg, #10B981, #065f46); }
+.c-orange { background: linear-gradient(145deg, #F59E0B, #b45309); }
+.c-purple { background: linear-gradient(145deg, #A855F7, #5b21b6); }
+.c-cyan { background: linear-gradient(145deg, #06B6D4, #155e75); }
+
+/* Template cards */
+.tpl { display: flex; flex-direction: column; gap: 10px; }
+.tpl-ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: rgba(168,85,247,.16); color: var(--purple); }
+.tpl h3 { font-size: 15.5px; }
+.tpl .meta { font-size: 12.5px; color: var(--muted); }
+.tpl .row { display: flex; gap: 8px; margin-top: auto; flex-wrap: wrap; }
+.tpl .row .btn { flex: 1; }
+.badge { display: inline-block; font-size: 11.5px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+
+.feature-row { display: grid; grid-template-columns: 3fr 1fr; gap: 16px; align-items: stretch; }
+.promo { border-radius: var(--radius); padding: 22px; background: linear-gradient(160deg, #6D28D9, #2a1065); border: 1px solid rgba(250,204,21,.4); display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.promo h3 { font-size: 20px; }
+.promo p { color: #ddd6fe; font-size: 14px; }
+
+.trust { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+.trust > div { display: flex; align-items: center; gap: 12px; padding: 18px; border-left: 1px solid var(--border); }
+.trust > div:first-child { border-left: 0; }
+.trust svg { color: var(--cyan); flex: none; }
+.trust strong { display: block; font-size: 14.5px; }
+.trust span { font-size: 12.5px; color: var(--muted); }
+
+.steps .card { display: flex; gap: 14px; align-items: flex-start; }
+.step-n { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, var(--purple), var(--blue)); font-weight: 700; flex: none; }
+.mini-list { display: grid; gap: 10px; }
+.mini { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); width: 100%; text-align: left; }
+.mini:hover { border-color: var(--purple); }
+.mini small { color: var(--muted); display: block; font-size: 12px; }
+
+.footer { border-top: 1px solid var(--border); margin-top: 48px; padding: 32px 28px 24px; background: var(--bg2); }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 28px; max-width: 1224px; margin: 0 auto; }
+.footer h4 { margin-bottom: 10px; font-size: 14px; }
+.footer a { display: block; color: var(--muted); font-size: 13.5px; padding: 3px 0; }
+.footer a:hover { color: var(--text); }
+.copyright { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 24px; }
+
+/* Page chrome */
+.crumbs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.crumbs a:hover { color: var(--text); }
+.page-title { font-size: 30px; letter-spacing: -.5px; font-weight: 800; }
+.page-sub { color: var(--muted); margin: 8px 0 22px; max-width: 680px; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; align-items: center; }
+.chip { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); font-size: 13.5px; font-weight: 600; color: var(--muted); }
+.chip.on { background: rgba(168,85,247,.22); color: var(--text); border-color: var(--purple); }
+.field { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 0 12px; height: 42px; outline: 0; min-width: 0; }
+.field:focus { border-color: var(--purple); }
+select.field option { background: var(--card); }
+textarea.field { height: auto; padding: 10px 12px; resize: vertical; }
+label.lbl { display: grid; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.workspace { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.notice { border: 1px dashed var(--purple); background: rgba(168,85,247,.08); border-radius: var(--radius); padding: 22px; text-align: center; color: var(--muted); }
+.notice h3 { color: var(--text); margin-bottom: 6px; }
+.paper { background: #fff; color: #111; border-radius: 6px; padding: 28px; min-height: 260px; font-family: Georgia, "Times New Roman", serif; }
+.faq details { border: 1px solid var(--border); border-radius: 12px; background: var(--card); padding: 14px 16px; margin-bottom: 10px; }
+.faq summary { font-weight: 600; cursor: pointer; }
+.faq p { color: var(--muted); margin-top: 8px; font-size: 14.5px; }
+
+/* Modal */
+.modal-back { position: fixed; inset: 0; background: rgba(3,5,18,.75); backdrop-filter: blur(4px); z-index: 100; display: grid; place-items: center; padding: 16px; }
+.modal { width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; background: var(--card); border: 1px solid var(--purple); border-radius: 20px; padding: 24px; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.modal-head h3 { font-size: 20px; }
+
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--card2); border: 1px solid var(--green); padding: 12px 18px; border-radius: 12px; z-index: 120; }
+
+/* Pricing */
+.plan { display: flex; flex-direction: column; gap: 12px; }
+.plan ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; color: var(--muted); font-size: 14px; }
+.plan li::before { content: "✓ "; color: var(--green); font-weight: 700; }
+.price { font-size: 30px; font-weight: 800; }
+
+/* Responsive */
+@media (max-width: 1180px) { .g5 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(2, 1fr); } .feature-row { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(-100%); width: min(300px, 86vw); }
+  .sidebar.open { transform: none; box-shadow: 20px 0 60px rgba(0,0,0,.6); }
+  .scrim.show { display: block; position: fixed; inset: 0; background: rgba(3,5,18,.6); z-index: 55; }
+  .main-col { margin-left: 0; }
+  .menu-btn { display: grid; }
+  .header { padding: 0 14px; gap: 8px; height: 60px; }
+  .content { padding: 16px; }
+  .kbd { display: none; }
+  .hero { grid-template-columns: 1fr; padding: 26px 20px; }
+  .hero-art { display: none; }
+  .hero p { font-size: 15px; margin: 12px 0 18px; }
+  .g3, .g2, .workspace { grid-template-columns: 1fr; }
+  .g5 { grid-template-columns: repeat(2, 1fr); }
+  .trust { grid-template-columns: 1fr 1fr; }
+  .trust > div:nth-child(3) { border-left: 0; }
+  .trust > div:nth-child(n+3) { border-top: 1px solid var(--border); }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .page-title { font-size: 25px; }
+  .search-hide-mobile { display: none; }
+}
+@media (max-width: 520px) { .g5, .g4 { grid-template-columns: 1fr; } .cat { min-height: 0; } .hero-actions .btn { flex: 1; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ---------- Shared tool UI ---------- */
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.print-only { display: none; }
+.drop { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 32px 16px; border: 2px dashed var(--border); border-radius: var(--radius);
+  background: rgba(21,29,67,.5); color: var(--muted); cursor: pointer; transition: border-color .15s, background .15s; }
+.drop strong { color: var(--text); }
+.drop:hover, .drop.over { border-color: var(--purple); background: rgba(168,85,247,.12); }
+.drop svg { color: var(--purple); }
+.alert { margin-top: 12px; padding: 10px 14px; border-radius: 12px; font-size: 14px; border: 1px solid; display: flex; gap: 8px; align-items: center; }
+.alert.ok { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.4); color: #a7f3d0; }
+.alert.err { background: rgba(244,63,94,.1); border-color: rgba(244,63,94,.45); color: #fecdd3; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.icon-btn.sm { width: 32px; height: 32px; border-radius: 9px; flex: none; }
+.icon-btn:disabled, .btn:disabled { opacity: .45; cursor: not-allowed; }
+input[type=range] { width: 100%; accent-color: var(--purple); }
+input[type=checkbox] { accent-color: var(--purple); width: 18px; height: 18px; flex: none; }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.thumbs.big { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+.thumb-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 8px; display: grid; gap: 4px; align-content: start; }
+.thumb-card.sel { border-color: #f43f5e; background: rgba(244,63,94,.12); }
+.thumb-card img { width: 100%; height: 110px; object-fit: contain; background: #fff; border-radius: 6px; }
+.thumb-card .pg { height: 150px; background: #fff; border-radius: 6px; display: grid; place-items: center; overflow: hidden; color: #888; }
+.thumb-card .pg img { width: auto; height: auto; max-height: 100%; max-width: 100%; background: none; }
+.thumbs.big .thumb-card[draggable=true] { cursor: grab; }
+.tc-name { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tc-size { font-size: 11.5px; color: var(--muted); }
+.tc-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.pri-high { color: #fda4af; border-color: #f43f5e; } .pri-medium { color: #fde68a; border-color: #f59e0b; } .pri-low { color: #a7f3d0; border-color: #10b981; }
+.mini.done-row { opacity: .6; }
+.pdf-stage { position: relative; width: 100%; max-width: 640px; margin: 0 auto; background: #fff; border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; }
+.pdf-stage img { width: 100%; height: 100%; display: block; }
+.pdf-text { position: absolute; white-space: pre; line-height: 1.2; cursor: move; padding: 0 1px; touch-action: none; font-family: Helvetica, Arial, sans-serif; }
+.pdf-text.on { outline: 2px dashed #7c3aed; outline-offset: 2px; }
+
+/* Timetable grid */
+.tt-scroll { overflow-x: auto; }
+.tt { display: grid; grid-template-columns: 52px repeat(7, minmax(92px, 1fr)); min-width: 780px; }
+.tt-corner, .tt-day { background: var(--bg2); padding: 8px 4px; text-align: center; font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--border); }
+.tt-hours { font-size: 11px; color: var(--muted); }
+.tt-hours div { text-align: right; padding-right: 6px; border-top: 1px solid var(--border); }
+.tt-col { position: relative; border-left: 1px solid var(--border); }
+.tt-line { border-top: 1px solid var(--border); }
+.tt-entry { position: absolute; left: 2px; right: 2px; border: 1px solid; border-radius: 8px; padding: 3px 6px; font-size: 11.5px; overflow: hidden; cursor: pointer; color: #fff; line-height: 1.25; }
+.tt-entry strong { display: block; } .tt-entry span { display: block; opacity: .9; }
+.week-grid { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 8px; overflow-x: auto; }
+.week-col { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 8px; display: grid; gap: 6px; align-content: start; min-height: 120px; min-width: 130px; }
+.week-head { display: flex; justify-content: space-between; align-items: baseline; } .week-head small { color: var(--muted); }
+.task { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px; font-size: 13px; }
+.task.done { opacity: .55; text-decoration: line-through; }
+.task-main { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; } .task-main small { display: block; color: var(--muted); }
+.task-btns { display: flex; gap: 4px; margin-top: 4px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px; }
+.tbl th, .tbl td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.tbl th { color: var(--muted); font-size: 12.5px; }
+.tbl tr.past { opacity: .55; }
+
+/* Template chooser */
+.thumb-box { height: 290px; overflow: hidden; border-radius: 10px; background: #e5e7eb; display: flex; justify-content: center; align-items: flex-start; padding-top: 6px; }
+.thumb-box.blank { background: rgba(168,85,247,.08); border: 2px dashed var(--purple); align-items: center; color: var(--purple); padding: 0; }
+.blank-card { border-style: dashed; }
+.modal.wide { max-width: 900px; }
+.preview-scroll { max-height: 66vh; overflow: auto; background: #6b7280; border-radius: 10px; padding: 12px; }
+.preview-label { color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }
+.sec-edit { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); }
+.fit-wrap { width: 100%; } .fit-inner { will-change: transform; }
+.toc-edit { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; } .toc-edit .field:first-child { flex: 1 1 160px; }
+
+/* ---------- Paper (always white, like a printed page) ---------- */
+.paper { background: #fff; color: #111; box-shadow: 0 10px 40px rgba(0,0,0,.4); min-height: 1123px; padding: 56px 64px; font-size: 15px; line-height: 1.55; box-sizing: border-box; }
+.pp.font-serif, .font-serif { font-family: Georgia, "Times New Roman", serif; }
+.pp.font-sans { font-family: "Segoe UI", Roboto, Arial, sans-serif; }
+.pp { --accent: #222; }
+.pp-cover { display: flex; flex-direction: column; min-height: 960px; padding: 40px; gap: 28px; }
+.pp-cover.frame-double { border: 6px double var(--accent); }
+.pp-cover.frame-single { border: 2px solid var(--accent); }
+.pp-cover.frame-side { border-left: 10px solid var(--accent); padding-left: 32px; }
+.pp-cover .pp-orgblock { text-align: left; } .pp-cover.head-center .pp-orgblock { text-align: center; } .pp-cover.head-boxed .pp-orgblock { text-align: center; }
+.pp-org { font-size: 22px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+.pp-sub { font-size: 16px; margin-top: 4px; }
+.pp-band { background: var(--accent); color: #fff; padding: 26px 28px; margin: -40px -40px 0; }
+.pp-band .pp-org { color: #fff; } .pp-band .pp-sub { opacity: .92; }
+.pp-titlewrap { flex: 1; display: flex; align-items: center; justify-content: center; }
+.pp-title { font-size: 26px; font-weight: 800; line-height: 1.3; width: 100%; }
+.pp-title.small { font-size: 28px; }
+.pp-title.head-center { text-align: center; }
+.pp-title.head-boxed { text-align: center; border: 2px solid var(--accent); padding: 18px; }
+.pp-title.head-left { color: var(--accent); }
+.pp-title.head-band { color: var(--accent); border-left: 6px solid var(--accent); padding-left: 16px; }
+.pp-details { display: grid; gap: 6px; }
+.pp-row { display: flex; gap: 10px; font-size: 15px; } .pp-row span { color: #555; min-width: 190px; } .pp-row span::after { content: ':'; }
+.pp-cover.head-center .pp-details { justify-items: center; } .pp-cover.head-center .pp-row { width: 80%; justify-content: center; }
+.pp-pagebreak { break-after: page; height: 28px; }
+.pp-content, .pp-doc { padding: 0; }
+.pp-sec { margin-bottom: 20px; break-inside: avoid-page; }
+.pp-body { margin: 6px 0 0; white-space: pre-wrap; }
+.pp-h { margin: 0; font-size: 18px; }
+.hs-upper { text-transform: uppercase; text-align: center; letter-spacing: .6px; font-size: 16px; }
+.hs-bar { background: var(--accent); color: #fff; padding: 6px 12px; font-size: 16px; border-radius: 3px; }
+.hs-underline { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 3px; }
+.hs-plain { font-size: 17px; }
+.hs-numbered { color: var(--accent); font-size: 17px; }
+.pp-doc.frame-double, .pp-doc.frame-single { border: 2px solid var(--accent); padding: 30px; }
+.pp-doc.frame-side { border-left: 10px solid var(--accent); padding-left: 28px; }
+.pp-doctitle { margin-bottom: 14px; } .pp-doc .pp-band { margin: -30px -30px 18px; } .pp-doc.frame-none .pp-band, .pp-doc.head-band .pp-band { margin: 0 0 18px; }
+.pp-doc.head-boxed .pp-doctitle { border: 2px solid var(--accent); padding: 12px; text-align: center; }
+.pp-meta { display: grid; gap: 4px; margin: 0 0 18px; padding-bottom: 12px; border-bottom: 1px solid #ddd; } .pp-meta .pp-row span { min-width: 120px; }
+/* letters */
+.pp-letter { display: grid; gap: 14px; align-content: start; }
+.pp-letter.frame-double { border: 6px double var(--accent); padding: 36px; } .pp-letter.frame-single { border: 2px solid var(--accent); padding: 36px; }
+.pp-letter.frame-side { border-left: 10px solid var(--accent); padding-left: 28px; }
+.pp-band.lt { margin: 0; } .pp-letter.head-band { padding: 0; } .pp-letter.head-band > :not(.pp-band) { padding: 0 8px; }
+.pp-lname { font-weight: 800; font-size: 18px; } .pp-lline { font-size: 14px; color: #333; }
+.pp-band.lt .pp-lname, .pp-band.lt .pp-lline { color: #fff; }
+.pp-recip { line-height: 1.4; }
+.pp-subj { font-weight: 800; }
+.pp-subj.hs-upper { text-transform: uppercase; text-align: left; text-decoration: underline; font-size: 15px; letter-spacing: 0; }
+.pp-subj.hs-bar { background: none; color: var(--accent); padding: 0; } .pp-subj.hs-underline { border-bottom: 2px solid var(--accent); }
+.pp-subj.hs-numbered { border: 1.5px solid var(--accent); padding: 6px 10px; display: inline-block; }
+.pp-sign { margin-top: 36px; font-weight: 700; } .pp-close { margin-top: 8px; }
+/* slides */
+.paper.slides-wrap { background: none; box-shadow: none; padding: 0; min-height: 0; }
+.pp-slides { display: grid; gap: 18px; }
+.pp-slide { aspect-ratio: 16 / 9; border-radius: 10px; padding: 36px 48px; position: relative; overflow: hidden; box-shadow: 0 6px 24px rgba(0,0,0,.3); display: flex; flex-direction: column; break-inside: avoid; }
+.pp-slide.title { justify-content: center; text-align: center; gap: 10px; }
+.sl-title { font-size: 40px; font-weight: 800; line-height: 1.2; } .sl-meta { font-size: 20px; opacity: .85; }
+.sl-head { font-size: 30px; font-weight: 800; padding-bottom: 8px; margin-bottom: 18px; } .sl-head.bar { padding: 12px 20px; margin: -36px -48px 22px; }
+.sl-body { font-size: 22px; line-height: 1.5; } .sl-num { position: absolute; right: 18px; bottom: 10px; font-size: 14px; opacity: .6; }
+/* TOC */
+.toc-row { display: flex; align-items: baseline; gap: 6px; margin: 7px 0; font-size: 15px; }
+.toc-row.lvl0 { font-weight: 700; } .toc-row.lvl1 { padding-left: 24px; } .toc-row.lvl2 { padding-left: 48px; font-size: 14px; }
+.toc-row .lead { flex: 1; min-width: 12px; } .toc-row.dotted .lead, .toc-row.numbered .lead { border-bottom: 2px dotted #666; transform: translateY(-3px); }
+.toc-row .t { max-width: 80%; }
+.refs { display: grid; gap: 12px; } .ref-row { display: flex; gap: 10px; align-items: flex-start; } .ref-row p { padding-left: 32px; text-indent: -32px; flex: 1; }
+
+/* ---------- CV designs ---------- */
+.cv { padding: 0; display: block; font-family: "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; }
+.cv h1 { margin: 0; } .cv h4 { margin: 0 0 6px; } .cv p { margin: 0; } .cv ul { margin: 4px 0 0; padding-left: 18px; }
+.cv-sec { margin-bottom: 18px; break-inside: avoid; } .cv-item { margin-bottom: 10px; }
+.cv-row { display: flex; justify-content: space-between; gap: 12px; } .cv-row span { color: #666; font-size: 13px; white-space: nowrap; } .cv-sub { color: #555; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; } .chips span { background: #eef2ff; color: #3730a3; padding: 3px 10px; border-radius: 999px; font-size: 13px; }
+.chips.edit span { background: var(--card2); color: var(--text); border: 1px solid var(--border); display: inline-flex; gap: 6px; align-items: center; }
+.chips.edit button { background: none; border: 0; color: var(--muted); padding: 0; display: grid; }
+.cv-professional header { padding: 44px 56px 18px; border-bottom: 5px solid #1e3a8a; } .cv-professional h1 { font-size: 34px; color: #1e3a8a; }
+.cv-professional .cv-line { color: #444; margin-top: 6px; } .cv-professional .cv-body { padding: 24px 56px 40px; }
+.cv-professional h4 { text-transform: uppercase; letter-spacing: 1px; color: #1e3a8a; border-bottom: 1px solid #c7d2fe; padding-bottom: 3px; font-size: 13px; }
+.cv-modern { display: grid; grid-template-columns: 250px 1fr; } .cv-modern aside { background: #4c1d95; color: #fff; padding: 44px 24px; } .cv-modern main { padding: 44px 36px; }
+.cv-modern aside h1 { font-size: 26px; margin-bottom: 14px; line-height: 1.15; } .cv-modern .cv-contact { font-size: 13px; margin-bottom: 6px; word-break: break-word; }
+.cv-modern aside h4 { text-transform: uppercase; letter-spacing: 1px; font-size: 12px; color: #ddd6fe; margin-top: 22px; } .cv-modern aside .cv-sec { margin: 0; }
+.cv-modern main h4 { color: #6d28d9; text-transform: uppercase; letter-spacing: 1px; font-size: 13px; border-bottom: 2px solid #ddd6fe; padding-bottom: 3px; }
+.cv-classic { font-family: Georgia, "Times New Roman", serif; padding: 48px 60px; } .cv-classic header { text-align: center; border-bottom: 3px double #111; padding-bottom: 14px; margin-bottom: 20px; }
+.cv-classic h1 { font-size: 32px; letter-spacing: 2px; text-transform: uppercase; } .cv-classic h4 { font-variant: small-caps; font-size: 17px; border-bottom: 1px solid #111; padding-bottom: 2px; }
+.cv-minimal { padding: 60px 64px; font-weight: 300; } .cv-minimal h1 { font-size: 36px; font-weight: 300; letter-spacing: 1px; } .cv-minimal header { margin-bottom: 30px; color: #666; }
+.cv-minimal h4 { text-transform: uppercase; letter-spacing: 2px; font-size: 11px; color: #888; font-weight: 600; } .cv-minimal b { font-weight: 600; }
+.cv-graduate header { background: linear-gradient(120deg, #0f766e, #0e7490); color: #fff; padding: 40px 52px; } .cv-graduate h1 { font-size: 34px; } .cv-graduate .cv-body { padding: 26px 52px 40px; }
+.cv-graduate h4 { color: #0f766e; text-transform: uppercase; letter-spacing: 1px; font-size: 13px; border-left: 4px solid #0f766e; padding-left: 8px; }
+
+/* ---------- Rich text editor ---------- */
+.rt-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; position: sticky; top: calc(var(--header-h) + 4px); z-index: 5; }
+.rt-toolbar .sep { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
+.rt-paper { min-height: 600px; outline: none; cursor: text; }
+.rt-paper:focus { box-shadow: 0 0 0 3px rgba(168,85,247,.5), 0 10px 40px rgba(0,0,0,.4); }
+.rt h1 { font-size: 28px; margin: 0 0 12px; } .rt h2 { font-size: 21px; margin: 18px 0 6px; } .rt h3 { font-size: 17px; margin: 14px 0 4px; }
+.rt p { margin: 0 0 10px; } .rt ul, .rt ol { padding-left: 24px; } .rt a { color: #2563eb; } .rt img { max-width: 100%; height: auto; }
+
+/* ---------- Print: only the document ---------- */
+@page { margin: 12mm; }
+@media print {
+  .no-print, .sidebar, .header, .footer, .scrim, .crumbs, .toast { display: none !important; }
+  .print-only { display: block !important; color: #000; }
+  .main-col { margin: 0 !important; }
+  .content { padding: 0 !important; max-width: none !important; }
+  html, body, .app { background: #fff !important; color: #000 !important; }
+  .card.print-area { border: 0 !important; background: #fff !important; padding: 0 !important; color: #000 !important; }
+  .print-area { color: #000; }
+  .print-area .workspace, .workspace { display: block !important; }
+  .paper { box-shadow: none !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; }
+  .cv .cv-body, .cv header, .cv aside, .cv main { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .paper, .pp-band, .hs-bar, .pp-slide { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rt-paper { padding: 0 !important; }
+  .fit-wrap { height: auto !important; } .fit-inner { transform: none !important; width: 100% !important; }
+  .pp-cover { min-height: 250mm; } .cv-modern { min-height: 270mm; }
+  .tt-scroll, .week-grid { overflow: visible !important; } .tt { min-width: 0 !important; }
+  .tt-corner, .tt-day, .tt-entry, .week-col, .task, .tbl th, .tbl td { -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #000; }
+  .tt-entry { color: #fff !important; }
+  .tbl, .week-col, .task { background: #fff !important; border-color: #999 !important; } .week-col { color: #000; }
+}
+@media (max-width: 900px) {
+  .workspace[style] { grid-template-columns: 1fr !important; }
+  .thumb-box { height: 260px; }
+  .pdf-stage { max-width: 100%; }
+}
+
+.toast{display:none} #app{min-height:100vh}
+.paper.cv{min-height:0}
+</style></head>
+<body><div id="app"></div><script>const categories = [
+  { id: 'academic', title: 'Academic Documents', path: '/academic', icon: 'GraduationCap', color: 'blue',
+    desc: 'Assignments, projects, reports and more.',
+    intro: 'Professional academic templates to help you prepare assignments, projects and reports.' },
+  { id: 'productivity', title: 'Student Productivity', path: '/productivity', icon: 'BarChart3', color: 'green',
+    desc: 'Timetables, planners, organisers and more.',
+    intro: 'Plan your study time, track deadlines and stay ahead of your exams.' },
+  { id: 'office', title: 'Office Templates', path: '/office', icon: 'Briefcase', color: 'orange',
+    desc: 'CVs, letters, business documents and more.',
+    intro: 'CVs, letters and everyday office documents, ready to fill in and download.' },
+  { id: 'pdf', title: 'PDF Tools', path: '/pdf', icon: 'FileText', color: 'purple',
+    desc: 'Convert, edit, merge and organise PDFs.',
+    intro: 'Work with PDFs right in your browser. Your files never leave your device.' },
+  { id: 'editors', title: 'Document Editors', path: '/editors', icon: 'PenLine', color: 'cyan',
+    desc: 'Edit and customise documents.',
+    intro: 'Write and format documents in a full editor, then save or export them.' },
+];
+
+// template: true  -> also listed in the Templates Library
+// featured / popular / recent flags drive homepage sections
+const tools = [
+  // Academic
+  { slug: 'assignment-template', title: 'Assignment Template', cat: 'academic', icon: 'FileText', template: true, featured: true, popular: true,
+    desc: 'Academic cover page with live preview and PDF download.', keywords: 'cover page assignment coursework' },
+  { slug: 'project-writing-format', title: 'Project Writing Format', cat: 'academic', icon: 'BookOpen', template: true, featured: true,
+    desc: 'Editable project structure from title page to appendices.', keywords: 'project report thesis chapters' },
+  { slug: 'project-cover-page', title: 'Project Cover Page', cat: 'academic', icon: 'File', template: true, recent: true,
+    desc: 'Professional project title page with PDF download.', keywords: 'cover title page project' },
+  { slug: 'project-defence-slides', title: 'Project Defence Slides', cat: 'academic', icon: 'Presentation', template: true, recent: true,
+    desc: 'Slide outline for your project defence.', keywords: 'presentation powerpoint defense' },
+  { slug: 'seminar-report', title: 'Seminar Report', cat: 'academic', icon: 'ClipboardList', template: true,
+    desc: 'Seminar report with cover page and sections.', keywords: 'seminar report' },
+  { slug: 'siwes-report', title: 'SIWES Report', cat: 'academic', icon: 'Building2', template: true, popular: true,
+    desc: 'Industrial training report template.', keywords: 'siwes industrial training it report' },
+  { slug: 'table-of-contents', title: 'Table of Contents', cat: 'academic', icon: 'ListOrdered',
+    desc: 'Build a formatted table of contents.', keywords: 'toc contents headings page numbers' },
+  { slug: 'references-bibliography', title: 'References and Bibliography', cat: 'academic', icon: 'Quote',
+    desc: 'Format a reference list in basic APA style.', keywords: 'apa citation references bibliography' },
+  // Productivity
+  { slug: 'study-timetable', title: 'Study Timetable', cat: 'productivity', icon: 'CalendarDays', template: true, featured: true, popular: true,
+    desc: 'Weekly grid timetable that saves in your browser.', keywords: 'timetable schedule class lecture' },
+  { slug: 'weekly-study-planner', title: 'Weekly Study Planner', cat: 'productivity', icon: 'CalendarCheck',
+    desc: 'Plan study tasks across the week.', keywords: 'weekly planner tasks' },
+  { slug: 'daily-study-planner', title: 'Daily Study Planner', cat: 'productivity', icon: 'ClipboardList',
+    desc: 'Goals, tasks and time blocks for today.', keywords: 'daily planner goals' },
+  { slug: 'examination-timetable', title: 'Examination Timetable', cat: 'productivity', icon: 'Timer', template: true,
+    desc: 'Track exam dates with a countdown.', keywords: 'exam timetable countdown' },
+  { slug: 'assignment-planner', title: 'Assignment Planner', cat: 'productivity', icon: 'NotebookPen',
+    desc: 'Track deadlines and completion status.', keywords: 'assignment deadline tracker' },
+  // Office
+  { slug: 'cv-builder', title: 'CV Builder', cat: 'office', icon: 'Contact', template: true, popular: true, recent: true,
+    desc: 'Build a CV with four designs and download it.', keywords: 'cv resume curriculum vitae template' },
+  { slug: 'application-letter', title: 'Application Letter', cat: 'office', icon: 'Mail', template: true, featured: true, popular: true,
+    desc: 'Formatted job or admission application letter.', keywords: 'letter job application cover letter' },
+  { slug: 'official-letter', title: 'Official Letter', cat: 'office', icon: 'Mail', template: true,
+    desc: 'Formal letter with sender, recipient and signature.', keywords: 'formal letter official' },
+  { slug: 'business-letter', title: 'Business Letter', cat: 'office', icon: 'Building2', template: true,
+    desc: 'Business letter with company details.', keywords: 'business letter company' },
+  { slug: 'meeting-notes', title: 'Meeting Notes', cat: 'office', icon: 'NotebookPen', template: true,
+    desc: 'Agenda, decisions and action items.', keywords: 'meeting minutes notes agenda' },
+  { slug: 'personal-statement', title: 'Personal Statement', cat: 'office', icon: 'UserRound', template: true, recent: true,
+    desc: 'Structured personal statement with preview.', keywords: 'personal statement admission scholarship' },
+  // PDF
+  { slug: 'images-to-pdf', title: 'Images to PDF', cat: 'pdf', icon: 'FileImage', popular: true,
+    desc: 'Turn JPG, PNG and WebP images into one PDF.', keywords: 'convert image jpg png pdf' },
+  { slug: 'merge-pdf', title: 'Merge PDF', cat: 'pdf', icon: 'Combine', popular: true,
+    desc: 'Combine several PDFs into one file.', keywords: 'join combine pdf' },
+  { slug: 'split-pdf', title: 'Split PDF', cat: 'pdf', icon: 'Scissors',
+    desc: 'Split by page, range or custom selection.', keywords: 'extract pages pdf' },
+  { slug: 'compress-pdf', title: 'Compress PDF', cat: 'pdf', icon: 'Minimize2',
+    desc: 'Reduce PDF file size where possible.', keywords: 'reduce size pdf' },
+  { slug: 'organise-pdf-pages', title: 'Organise PDF Pages', cat: 'pdf', icon: 'LayoutGrid',
+    desc: 'Reorder, rotate and delete pages in one view.', keywords: 'organize pdf pages thumbnails' },
+  { slug: 'delete-pdf-pages', title: 'Delete PDF Pages', cat: 'pdf', icon: 'Trash2',
+    desc: 'Remove unwanted pages from a PDF.', keywords: 'remove pages pdf' },
+  { slug: 'reorder-pdf-pages', title: 'Reorder PDF Pages', cat: 'pdf', icon: 'ArrowUpDown',
+    desc: 'Drag pages into a new order.', keywords: 'rearrange pdf pages' },
+  { slug: 'add-text-to-pdf', title: 'Add Text to PDF', cat: 'pdf', icon: 'Type', recent: true,
+    desc: 'Place text anywhere on a PDF page.', keywords: 'edit pdf text write fill' },
+  // Editors
+  { slug: 'assignment-editor', title: 'Assignment Editor', cat: 'editors', icon: 'PenLine',
+    desc: 'Rich text editor set up for assignments.', keywords: 'editor assignment write' },
+  { slug: 'project-editor', title: 'Project Editor', cat: 'editors', icon: 'PenLine',
+    desc: 'Rich text editor set up for project chapters.', keywords: 'editor project write' },
+  { slug: 'letter-editor', title: 'Letter Editor', cat: 'editors', icon: 'PenLine',
+    desc: 'Rich text editor set up for letters.', keywords: 'editor letter write' },
+  { slug: 'cv-editor', title: 'CV Editor', cat: 'editors', icon: 'PenLine',
+    desc: 'Rich text editor set up for CVs.', keywords: 'editor cv write' },
+  { slug: 'blank-document', title: 'Blank Document', cat: 'editors', icon: 'FilePlus',
+    desc: 'Start from an empty page.', keywords: 'blank new document editor' },
+];
+
+const pages = [
+  { slug: 'templates', title: 'Templates Library', path: '/templates', icon: 'Library', label: 'Page', keywords: 'templates library all' },
+  { slug: 'about', title: 'About StudyDesk', path: '/about', icon: 'Info', label: 'Page', keywords: 'about' },
+  { slug: 'help', title: 'Help & Support', path: '/help', icon: 'LifeBuoy', label: 'Page', keywords: 'help support faq contact' },
+];
+
+const catById = (id) => categories.find((c) => c.id === id);
+const toolPath = (t) => `/tool/${t.slug}`;
+const toolBySlug = (slug) => tools.find((t) => t.slug === slug);
+const toolsIn = (cat) => tools.filter((t) => t.cat === cat);
+
+// One flat list used by the header search.
+const searchIndex = [
+  ...categories.map((c) => ({ key: 'c-' + c.id, title: c.title, path: c.path, icon: c.icon, label: 'Category',
+    text: `${c.title} ${c.desc}`.toLowerCase() })),
+  ...tools.map((t) => ({ key: 't-' + t.slug, title: t.title, path: toolPath(t), icon: t.icon,
+    label: catById(t.cat).title, text: `${t.title} ${t.desc} ${t.keywords} ${catById(t.cat).title}`.toLowerCase() })),
+  ...pages.map((p) => ({ key: 'p-' + p.slug, title: p.title, path: p.path, icon: p.icon, label: p.label,
+    text: `${p.title} ${p.keywords}`.toLowerCase() })),
+];
+
+function searchAll(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const words = q.split(/\s+/);
+  return searchIndex
+    .filter((e) => words.every((w) => e.text.includes(w)))
+    .sort((a, b) => (b.title.toLowerCase().startsWith(q) ? 1 : 0) - (a.title.toLowerCase().startsWith(q) ? 1 : 0))
+    .slice(0, 8);
+}
+
+// Document template engine data.
+// A "family" = one tool (assignment, SIWES report, application letter...).
+// A template = a visual style + which sections it starts with. Every family has 5 templates + a blank option.
+
+const STYLES = {
+  classic:   { font: 'serif', head: 'center', hstyle: 'upper',     accent: '#1f2937', frame: 'double' },
+  corporate: { font: 'sans',  head: 'band',   hstyle: 'bar',       accent: '#1e3a8a', frame: 'none' },
+  modern:    { font: 'sans',  head: 'left',   hstyle: 'underline', accent: '#7c3aed', frame: 'side' },
+  simple:    { font: 'sans',  head: 'left',   hstyle: 'plain',     accent: '#222222', frame: 'none' },
+  formal:    { font: 'serif', head: 'boxed',  hstyle: 'numbered',  accent: '#14532d', frame: 'single' },
+};
+const BLANK_STYLE = { font: 'sans', head: 'left', hstyle: 'plain', accent: '#222222', frame: 'none' };
+
+const f = (k, l, v = '', role) => ({ k, l, v, role });
+const s = (h, b = '') => ({ h, b });
+
+// Each family: kind = report | cover | letter | doc | slides
+const FAMILIES = {
+  'assignment-template': {
+    kind: 'report', noun: 'Assignment', blankLabel: 'Create Blank Assignment', file: 'assignment',
+    fields: [
+      f('institution', 'Institution name', 'University of Lagos', 'org'), f('faculty', 'Faculty', 'Faculty of Science', 'sub'),
+      f('department', 'Department', 'Department of Computer Science', 'sub'), f('topic', 'Assignment topic', 'The Role of Algorithms in Everyday Computing', 'title'),
+      f('course', 'Course title', 'Introduction to Computer Science'), f('code', 'Course code', 'CSC 101'),
+      f('student', 'Student name', 'Amina Yusuf'), f('matric', 'Matriculation number', '210805001'),
+      f('lecturer', "Lecturer's name", 'Dr. A. Okafor'), f('date', 'Submission date', ''),
+    ],
+    sections: [
+      s('Introduction', 'Write a short introduction that explains what the assignment is about and what you will cover.'),
+      s('Main Discussion', 'Develop your points here. Use clear paragraphs and support each point with evidence.'),
+      s('Conclusion', 'Summarise your main points and state your conclusion.'),
+      s('References', 'List your sources here in the format your department requires.'),
+    ],
+    templates: [
+      { id: 'standard', name: 'Standard University Assignment', desc: 'Centred, double-bordered cover page in a traditional serif style.', style: 'classic', keep: [0, 1, 2, 3] },
+      { id: 'professional', name: 'Professional Academic Assignment', desc: 'Navy header band with numbered section headings.', style: 'corporate', keep: [0, 1, 2, 3] },
+      { id: 'modern', name: 'Modern Assignment', desc: 'Left-aligned cover with a purple accent bar and underlined headings.', style: 'modern', keep: [0, 1, 2, 3] },
+      { id: 'simple', name: 'Simple Assignment', desc: 'Plain cover and just the essentials: introduction, discussion, conclusion.', style: 'simple', keep: [0, 1, 2] },
+      { id: 'detailed', name: 'Detailed Academic Assignment', desc: 'Boxed title, numbered sections, and extra sections for abstract and recommendations.', style: 'formal', keep: [0, 1, 2, 3],
+        extra: [s('Abstract', 'A brief summary of the assignment in 100–150 words.'), s('Recommendations', 'List any recommendations that follow from your discussion.')], extraAt: [0, 3] },
+    ],
+  },
+  'project-writing-format': {
+    kind: 'report', noun: 'Project', blankLabel: 'Create Blank Project', file: 'project',
+    fields: [
+      f('institution', 'University name', 'Federal University of Technology', 'org'), f('department', 'Department', 'Department of Computer Science', 'sub'),
+      f('topic', 'Project title', 'Design and Implementation of a Student Records System', 'title'), f('student', 'Student name', 'Ibrahim Musa'),
+      f('matric', 'Matriculation number', '2019/1/12345'), f('supervisor', 'Supervisor', 'Prof. N. Eze'), f('date', 'Date', ''),
+    ],
+    sections: [
+      s('Declaration', 'I declare that this project was written by me and is a record of my own research work.'),
+      s('Certification', 'This is to certify that this project was carried out by the student named above under my supervision.'),
+      s('Dedication', 'This project is dedicated to…'),
+      s('Acknowledgements', 'I thank…'),
+      s('Abstract', 'State the problem, method, main findings and conclusion in about 250 words.'),
+      s('Table of Contents', 'Insert your table of contents here. You can generate one with the Table of Contents tool.'),
+      s('List of Tables', 'Table 1.1 …'), s('List of Figures', 'Figure 1.1 …'),
+      s('Chapter One: Introduction', '1.1 Background of the study\n1.2 Statement of the problem\n1.3 Aim and objectives\n1.4 Research questions\n1.5 Significance of the study\n1.6 Scope and limitations'),
+      s('Chapter Two: Literature Review', '2.1 Introduction\n2.2 Conceptual review\n2.3 Theoretical framework\n2.4 Empirical review\n2.5 Summary of the review'),
+      s('Chapter Three: Methodology', '3.1 Research design\n3.2 Population and sample\n3.3 Data collection\n3.4 Method of analysis'),
+      s('Chapter Four: Results and Discussion', '4.1 Presentation of results\n4.2 Discussion of findings'),
+      s('Chapter Five: Summary, Conclusion and Recommendations', '5.1 Summary\n5.2 Conclusion\n5.3 Recommendations'),
+      s('References', 'List your references here.'), s('Appendices', 'Appendix A: …'),
+    ],
+    note: 'Institutions set their own project formats. Treat these as starting structures and edit them to match your department’s guidelines.',
+    templates: [
+      { id: 'full-classic', name: 'Full Project (Classic)', desc: 'Complete front matter and five chapters, centred serif cover.', style: 'classic', keep: 'all' },
+      { id: 'full-corporate', name: 'Full Project (Professional)', desc: 'Complete structure with a navy band cover and bar headings.', style: 'corporate', keep: 'all' },
+      { id: 'chapters-modern', name: 'Chapters Only (Modern)', desc: 'Skips front matter. Five chapters, references and appendices.', style: 'modern', keep: [8, 9, 10, 11, 12, 13, 14] },
+      { id: 'compact', name: 'Compact Project', desc: 'Short layout: abstract, chapters, references.', style: 'simple', keep: [4, 8, 9, 10, 11, 12, 13] },
+      { id: 'formal-numbered', name: 'Formal Numbered Project', desc: 'Boxed title with numbered headings and full structure.', style: 'formal', keep: 'all' },
+    ],
+  },
+  'project-cover-page': {
+    kind: 'cover', noun: 'Cover Page', blankLabel: 'Create Blank Cover Page', file: 'cover-page',
+    fields: [
+      f('institution', 'University name', 'University of Ibadan', 'org'), f('faculty', 'Faculty', 'Faculty of Technology', 'sub'),
+      f('department', 'Department', 'Department of Electrical Engineering', 'sub'),
+      f('topic', 'Project title', 'DESIGN AND CONSTRUCTION OF A SOLAR-POWERED PHONE CHARGER', 'title'),
+      f('student', 'Student name', 'Chinedu Okeke'), f('matric', 'Matriculation number', '190401234'), f('supervisor', 'Supervisor', 'Engr. Dr. T. Bello'),
+      f('date', 'Date', ''),
+    ],
+    sections: [],
+    templates: [
+      { id: 'classic', name: 'Classic Double Border', desc: 'Centred serif with a double border frame.', style: 'classic', keep: [] },
+      { id: 'corporate', name: 'Navy Band', desc: 'Bold navy band across the top with institution name.', style: 'corporate', keep: [] },
+      { id: 'modern', name: 'Modern Accent Bar', desc: 'Left-aligned with a vertical purple accent.', style: 'modern', keep: [] },
+      { id: 'simple', name: 'Plain and Clean', desc: 'No border, simple left-aligned layout.', style: 'simple', keep: [] },
+      { id: 'formal', name: 'Boxed Title', desc: 'Title in a bordered box with green accent frame.', style: 'formal', keep: [] },
+    ],
+  },
+  'project-defence-slides': {
+    kind: 'slides', noun: 'Defence Slides', blankLabel: 'Create Blank Slide Deck', file: 'defence-slides',
+    fields: [f('topic', 'Project title', 'Design and Implementation of a Student Records System', 'title'), f('student', 'Presenter', 'Ibrahim Musa'), f('supervisor', 'Supervisor', 'Prof. N. Eze')],
+    sections: [
+      s('Introduction', '• Background of the study\n• Why this topic matters'),
+      s('Problem Statement', '• What problem does this project solve?\n• Who is affected?'),
+      s('Objectives', '• Main objective\n• Specific objectives'),
+      s('Research Questions', '• Question 1\n• Question 2'),
+      s('Methodology', '• Research design\n• Tools and techniques\n• Data collection'),
+      s('Findings', '• Key result 1\n• Key result 2'),
+      s('Conclusion', '• What the study found\n• What it means'),
+      s('Recommendations', '• Recommendation 1\n• Recommendation 2'),
+    ],
+    note: 'Slides preview and print as PDF. Exporting a PowerPoint file is not available in this version.',
+    templates: [
+      { id: 'dark', name: 'Midnight Purple', desc: 'Dark slides with purple headings.', style: 'modern', theme: { bg: '#1b1240', fg: '#f4f3ff', accent: '#c084fc' }, keep: 'all' },
+      { id: 'academic', name: 'Academic Navy', desc: 'Navy title bar on white slides.', style: 'corporate', theme: { bg: '#ffffff', fg: '#1f2937', accent: '#1e3a8a', bar: true }, keep: 'all' },
+      { id: 'clean', name: 'Clean White', desc: 'Minimal white slides with a thin accent line.', style: 'simple', theme: { bg: '#ffffff', fg: '#222', accent: '#0e7490' }, keep: 'all' },
+      { id: 'green', name: 'Forest Green', desc: 'Soft green background, serif headings.', style: 'formal', theme: { bg: '#ecfdf5', fg: '#14532d', accent: '#15803d', serif: true }, keep: 'all' },
+      { id: 'short', name: 'Short Defence (6 slides)', desc: 'Condensed deck: problem, objectives, method, findings, conclusion, recommendations.', style: 'classic', theme: { bg: '#fafaf9', fg: '#1c1917', accent: '#92400e', serif: true }, keep: [1, 2, 4, 5, 6, 7] },
+    ],
+  },
+  'seminar-report': {
+    kind: 'report', noun: 'Seminar Report', blankLabel: 'Create Blank Seminar Report', file: 'seminar-report',
+    fields: [
+      f('institution', 'Institution', 'University of Nigeria, Nsukka', 'org'), f('department', 'Department', 'Department of Computer Science', 'sub'),
+      f('topic', 'Seminar topic', 'Cloud Computing and Its Impact on Education', 'title'), f('student', 'Student name', 'Grace Adebayo'),
+      f('matric', 'Matriculation number', '2020/243567'), f('supervisor', 'Seminar coordinator', 'Dr. C. Nwosu'), f('date', 'Date', ''),
+    ],
+    sections: [
+      s('Abstract', 'Summarise the seminar topic, scope and main conclusion in about 150 words.'),
+      s('Introduction', 'Introduce the topic and explain why it matters.'),
+      s('Main Discussion', 'Present the core content of your seminar in organised subsections.'),
+      s('Conclusion', 'State what the seminar shows and any lessons.'),
+      s('References', 'List your references.'),
+    ],
+    templates: [
+      { id: 'classic', name: 'Classic Seminar Report', desc: 'Centred double-border cover, uppercase headings.', style: 'classic', keep: 'all' },
+      { id: 'corporate', name: 'Professional Seminar Report', desc: 'Navy band cover with bar headings.', style: 'corporate', keep: 'all' },
+      { id: 'modern', name: 'Modern Seminar Report', desc: 'Accent bar cover with underlined headings.', style: 'modern', keep: 'all' },
+      { id: 'simple', name: 'Simple Seminar Report', desc: 'Minimal cover, no abstract.', style: 'simple', keep: [1, 2, 3, 4] },
+      { id: 'formal', name: 'Formal Numbered Seminar Report', desc: 'Boxed title and numbered chapters.', style: 'formal', keep: 'all' },
+    ],
+  },
+  'siwes-report': {
+    kind: 'report', noun: 'SIWES Report', blankLabel: 'Create Blank SIWES Report', file: 'siwes-report',
+    fields: [
+      f('institution', 'Institution', 'Federal Polytechnic, Nekede', 'org'), f('department', 'Department', 'Department of Electrical/Electronic Engineering', 'sub'),
+      f('topic', 'Report title', 'Report on Student Industrial Work Experience Scheme (SIWES)', 'title'), f('student', 'Student name', 'Tunde Bakare'),
+      f('matric', 'Matriculation number', 'ND/2021/EEE/045'), f('company', 'Place of attachment', 'Alpha Power Services Ltd, Lagos'),
+      f('period', 'Training period', 'March – August'), f('date', 'Date submitted', ''),
+    ],
+    sections: [
+      s('Introduction', 'Explain SIWES and the aim of your industrial training.'),
+      s('Organisation Profile', 'History, location, structure, products or services of the company where you trained.'),
+      s('Training Activities', 'Describe what you did each week or month, and in which unit or department.'),
+      s('Skills Acquired', 'List the technical and soft skills you gained.'),
+      s('Challenges', 'Describe difficulties you faced and how you handled them.'),
+      s('Conclusion', 'Summarise your experience and what you learned.'),
+      s('Recommendations', 'Recommendations for the company, institution and future students.'),
+      s('Appendices', 'Photographs, certificates, log-book extracts.'),
+    ],
+    templates: [
+      { id: 'classic', name: 'Classic SIWES Report', desc: 'Traditional double-border cover, full structure.', style: 'classic', keep: 'all' },
+      { id: 'corporate', name: 'Professional SIWES Report', desc: 'Navy band cover, bar headings.', style: 'corporate', keep: 'all' },
+      { id: 'modern', name: 'Modern SIWES Report', desc: 'Accent-bar cover with underlined headings.', style: 'modern', keep: 'all' },
+      { id: 'simple', name: 'Simple SIWES Report', desc: 'Minimal layout without appendices.', style: 'simple', keep: [0, 1, 2, 3, 4, 5, 6] },
+      { id: 'formal', name: 'Formal Numbered SIWES Report', desc: 'Boxed title and numbered sections.', style: 'formal', keep: 'all' },
+    ],
+  },
+  'application-letter': letterFamily('Application Letter', 'Create Blank Letter', 'application-letter', {
+    s_name: 'Zainab Bello', s_addr: '12 Unity Road, Kaduna', s_email: 'zainab.bello@example.com', s_phone: '08012345678',
+    r_name: 'The Human Resources Manager', r_org: 'Sunrise Technologies Ltd', r_addr: '5 Marina, Lagos', subject: 'APPLICATION FOR THE POSITION OF JUNIOR ACCOUNTANT',
+    salute: 'Dear Sir/Madam,', close: 'Yours faithfully,', sign: 'Zainab Bello',
+  }, [
+    s('Opening', 'I am writing to apply for the position of Junior Accountant advertised on your website.'),
+    s('Qualifications', 'I hold a B.Sc. in Accounting from Ahmadu Bello University and completed internship training at a local firm, where I prepared ledgers and reconciliations.'),
+    s('Closing paragraph', 'I would welcome the opportunity to discuss my application. Thank you for your time and consideration.'),
+  ]),
+  'official-letter': letterFamily('Official Letter', 'Create Blank Letter', 'official-letter', {
+    s_name: 'Emeka Obi', s_addr: 'Department of Mathematics, University of Port Harcourt', s_email: 'emeka.obi@example.com', s_phone: '08098765432',
+    r_name: 'The Registrar', r_org: 'University of Port Harcourt', r_addr: 'Choba, Port Harcourt', subject: 'REQUEST FOR ACADEMIC TRANSCRIPT',
+    salute: 'Dear Sir,', close: 'Yours faithfully,', sign: 'Emeka Obi',
+  }, [
+    s('Opening', 'I write to request an official copy of my academic transcript.'),
+    s('Details', 'My matriculation number is 15/MTH/001 and I graduated in the 2019/2020 session.'),
+    s('Closing paragraph', 'I will be grateful if the request is treated at the earliest convenience.'),
+  ]),
+  'business-letter': letterFamily('Business Letter', 'Create Blank Letter', 'business-letter', {
+    s_name: 'BrightPath Stationery Ltd', s_addr: '22 Allen Avenue, Ikeja, Lagos', s_email: 'sales@brightpath.example', s_phone: '01-234-5678',
+    r_name: 'The Procurement Officer', r_org: 'Greenfield Schools', r_addr: '8 School Road, Abuja', subject: 'QUOTATION FOR SCHOOL EXERCISE BOOKS',
+    salute: 'Dear Sir/Madam,', close: 'Yours faithfully,', sign: 'For: BrightPath Stationery Ltd',
+  }, [
+    s('Opening', 'Thank you for your enquiry. We are pleased to offer the following quotation.'),
+    s('Details', 'Exercise books (80 leaves): 5,000 units. Delivery within 14 days of confirmed order.'),
+    s('Closing paragraph', 'We look forward to doing business with you.'),
+  ], { sName: 'Company name', sAddr: 'Company address' }),
+  'meeting-notes': {
+    kind: 'doc', noun: 'Meeting Notes', blankLabel: 'Create Blank Meeting Notes', file: 'meeting-notes',
+    fields: [f('topic', 'Meeting title', 'Final Year Project Group Meeting', 'title'), f('date', 'Date', ''), f('time', 'Time', '4:00 PM'),
+      f('location', 'Location', 'Library, Room 2'), f('participants', 'Participants', 'Amina, Chidi, Tolu, Yusuf')],
+    sections: [s('Agenda', '1. Review progress\n2. Assign next tasks'), s('Discussion Notes', 'Summarise what was discussed.'),
+      s('Decisions', 'List what was decided.'), s('Action Items', '☐ Amina: finish chapter 2 by Friday\n☐ Chidi: collect survey responses')],
+    templates: [
+      { id: 'classic', name: 'Formal Minutes', desc: 'Centred title with uppercase headings.', style: 'classic', keep: 'all' },
+      { id: 'corporate', name: 'Corporate Meeting Notes', desc: 'Navy title band and bar headings.', style: 'corporate', keep: 'all' },
+      { id: 'modern', name: 'Modern Notes', desc: 'Accent bar with underlined headings.', style: 'modern', keep: 'all' },
+      { id: 'simple', name: 'Quick Notes', desc: 'Minimal: agenda, notes and action items.', style: 'simple', keep: [0, 1, 3] },
+      { id: 'formal', name: 'Numbered Minutes', desc: 'Boxed title with numbered sections.', style: 'formal', keep: 'all' },
+    ],
+  },
+  'personal-statement': {
+    kind: 'doc', noun: 'Personal Statement', blankLabel: 'Create Blank Personal Statement', file: 'personal-statement',
+    fields: [f('topic', 'Title', 'Personal Statement', 'title'), f('student', 'Name', 'Fatima Garba')],
+    sections: [
+      s('Introduction', 'Say who you are and why you are applying.'), s('Academic Background', 'Describe your studies, achievements and relevant coursework.'),
+      s('Skills', 'Describe skills that make you a good fit.'), s('Experience', 'Describe internships, projects, volunteering or work.'),
+      s('Career Goals', 'Explain what you want to achieve.'), s('Conclusion', 'Close with a confident summary of why you are the right candidate.'),
+    ],
+    templates: [
+      { id: 'classic', name: 'Classic Statement', desc: 'Centred serif title with uppercase headings.', style: 'classic', keep: 'all' },
+      { id: 'corporate', name: 'Professional Statement', desc: 'Navy band header and bar headings.', style: 'corporate', keep: 'all' },
+      { id: 'modern', name: 'Modern Statement', desc: 'Accent bar with underlined headings.', style: 'modern', keep: 'all' },
+      { id: 'simple', name: 'Simple Statement', desc: 'Flowing text with minimal headings: intro, background, goals, conclusion.', style: 'simple', keep: [0, 1, 4, 5] },
+      { id: 'formal', name: 'Formal Numbered Statement', desc: 'Boxed title with numbered headings.', style: 'formal', keep: 'all' },
+    ],
+  },
+};
+
+function letterFamily(noun, blankLabel, file, v, sections, labels = {}) {
+  const val = (k) => v[k] || '';
+  return {
+    kind: 'letter', noun, blankLabel, file,
+    fields: [
+      f('s_name', labels.sName || 'Sender name', val('s_name')), f('s_addr', labels.sAddr || 'Sender address', val('s_addr')),
+      f('s_email', 'Email', val('s_email')), f('s_phone', 'Phone', val('s_phone')), f('date', 'Date', ''),
+      f('r_name', 'Recipient name / title', val('r_name')), f('r_org', 'Organisation', val('r_org')), f('r_addr', 'Recipient address', val('r_addr')),
+      f('subject', 'Subject', val('subject')), f('salute', 'Greeting', val('salute')), f('close', 'Closing', val('close')), f('sign', 'Signature name', val('sign')),
+    ],
+    sections,
+    templates: [
+      { id: 'classic', name: 'Classic Centred Letter', desc: 'Centred sender block, serif type, underlined subject.', style: 'classic', keep: 'all' },
+      { id: 'corporate', name: 'Corporate Letterhead', desc: 'Navy letterhead band with sender details.', style: 'corporate', keep: 'all' },
+      { id: 'modern', name: 'Modern Letter', desc: 'Left-aligned with accent bar and bold subject.', style: 'modern', keep: 'all' },
+      { id: 'simple', name: 'Simple Block Letter', desc: 'Plain block format, no decoration.', style: 'simple', keep: 'all' },
+      { id: 'formal', name: 'Formal Letter', desc: 'Right-aligned sender block with boxed subject.', style: 'formal', keep: 'all' },
+    ],
+  };
+}
+
+const todayStr = () => new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+// Build the starting document for a template id ('blank' for the blank option)
+function makeDoc(slug, tid) {
+  const fam = FAMILIES[slug];
+  const blank = tid === 'blank';
+  const tpl = blank ? null : fam.templates.find((t) => t.id === tid) || fam.templates[0];
+  const fields = {};
+  fam.fields.forEach((fd) => { fields[fd.k] = blank ? '' : fd.k === 'date' ? todayStr() : fd.v; });
+  let secs = [];
+  if (!blank) {
+    const keep = tpl.keep === 'all' ? fam.sections.map((_, i) => i) : tpl.keep;
+    secs = keep.map((i) => ({ ...fam.sections[i] }));
+    if (tpl.extra) tpl.extra.forEach((x, n) => secs.splice(tpl.extraAt[n], 0, { ...x }));
   }
-  status.innerHTML="<span class='err'>❌ All proxies blocked. Try open this page for Desktop Chrome (3 dots > Desktop site) or use laptop. Or I go generate manual fetch code.</span>";
+  return { tid: blank ? 'blank' : tpl.id, fields, sections: secs.map((x, i) => ({ id: 's' + i + Math.random().toString(36).slice(2, 6), h: x.h, b: x.b })) };
 }
-function copyToken(){
-  const t=document.getElementById('tokenOut').value;
-  if(!t){alert("No token yet, click Fetch first");return;}
-  navigator.clipboard.writeText(t).then(()=>alert("Copied! Now go eec2022.github.io/auto.html and paste for Step 1")).catch(()=>{document.getElementById('tokenOut').select(); document.execCommand('copy'); alert("Copied!");});
+
+function styleFor(slug, tid) {
+  const fam = FAMILIES[slug];
+  const tpl = fam.templates.find((t) => t.id === tid);
+  return { ...(tpl ? STYLES[tpl.style] : BLANK_STYLE), theme: tpl?.theme };
 }
-</script></body></html>
+
+/* ===== StudyDesk interactive preview (single file, no build step) ===== */
+const mem = {};
+const store = {
+  get(k, d) { if (k in mem) return mem[k]; try { const v = localStorage.getItem('sdd-' + k); if (v) { mem[k] = JSON.parse(v); return mem[k]; } } catch (e) {} return d; },
+  set(k, v) { mem[k] = v; try { localStorage.setItem('sdd-' + k, JSON.stringify(v)); } catch (e) {} },
+};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+const move = (arr, i, d) => { const j = i + d; if (j < 0 || j >= arr.length) return arr; const c = [...arr]; const [x] = c.splice(i, 1); c.splice(j, 0, x); return c; };
+const EMO = { GraduationCap: '🎓', BarChart3: '📊', Briefcase: '💼', FileText: '📄', PenLine: '✏️', FileImage: '🖼️', Combine: '🧩', Scissors: '✂️', Minimize2: '🗜️', LayoutGrid: '▦', Trash2: '🗑️', ArrowUpDown: '↕️', Type: '🔤', BookOpen: '📖', ListOrdered: '🔢', Quote: '❝', Presentation: '📽️', ClipboardList: '📋', CalendarDays: '📅', CalendarCheck: '✅', Timer: '⏱️', Contact: '👤', Mail: '✉️', Building2: '🏢', NotebookPen: '📝', UserRound: '🙋', File: '📃', FilePlus: '➕', Home: '🏠', Library: '📚', Info: 'ℹ️', LifeBuoy: '🛟' };
+const ico = (n) => EMO[n] || '📄';
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+/* ---------- toast + modal ---------- */
+let toastT;
+function toast(msg) {
+  let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => { t.style.display = 'none'; }, 2600);
+}
+function modal(title, html, wide) {
+  closeModal();
+  const m = document.createElement('div'); m.className = 'modal-back'; m.id = 'modal';
+  m.innerHTML = `<div class="modal${wide ? ' wide' : ''}"><div class="modal-head"><h3>${esc(title)}</h3><button class="icon-btn" data-act="closeModal" aria-label="Close">✕</button></div>${html}</div>`;
+  m.addEventListener('mousedown', (e) => { if (e.target === m) closeModal(); });
+  document.body.appendChild(m); applyFit();
+}
+function closeModal() { const m = $('#modal'); if (m) m.remove(); }
+const confirmBox = (msg) => window.confirm(msg);
+
+/* ---------- fit (scale A4 papers to container) ---------- */
+function fit(html, scale) {
+  const st = scale ? `width:${794 * scale}px;margin:0 auto;` : '';
+  return `<div class="fit-wrap" data-scale="${scale || ''}" style="${st}"><div class="fit-inner" style="width:794px;transform-origin:top left">${html}</div></div>`;
+}
+function applyFit() {
+  $$('.fit-wrap').forEach((w) => {
+    const i = w.firstElementChild; if (!i) return;
+    const sc = parseFloat(w.dataset.scale) || Math.min(1, w.clientWidth / 794);
+    i.style.transform = `scale(${sc})`; w.style.height = (i.offsetHeight * sc) + 'px';
+  });
+}
+
+/* ---------- routing ---------- */
+function parseRoute() {
+  const h = location.hash.slice(1) || '/'; const [path, qs] = h.split('?');
+  return { path, q: Object.fromEntries(new URLSearchParams(qs || '')) };
+}
+const go = (h) => { location.hash = h; };
+const crumbs = (items) => `<nav class="crumbs no-print"><a data-go="/">Home</a>${items.map((i) => ` <span>›</span> ${i.to ? `<a data-go="${i.to}">${esc(i.label)}</a>` : `<span style="color:var(--text)">${esc(i.label)}</span>`}`).join('')}</nav>`;
+
+/* ---------- shell ---------- */
+function shell() {
+  const navCats = categories.map((c) => `<div><button class="nav-item" data-act="toggleCat" data-cat="${c.id}">${ico(c.icon)} ${c.title}<span class="chev">⌄</span></button>
+    <div class="sub" id="sub-${c.id}"><div><a data-go="${c.path}" data-nav="${c.path}">All ${c.title.toLowerCase()}</a>${toolsIn(c.id).map((t) => `<a data-go="${toolPath(t)}" data-nav="${toolPath(t)}">${t.title}</a>`).join('')}</div></div></div>`).join('');
+  $('#app').innerHTML = `<div class="app">
+  <aside class="sidebar" id="sb"><div class="brand" data-go="/" style="cursor:pointer"><img src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230B1030'/%3E%3Cpath d='M32 14 10 25l22 11 22-11z' fill='%23A855F7'/%3E%3Cpath d='M18 33v9c0 4 6 8 14 8s14-4 14-8v-9l-14 7z' fill='%23F4F3FF'/%3E%3C/svg%3E" alt=""><div><div class="brand-name">StudyDesk</div><div class="brand-tag">Learn • Create • Achieve</div></div></div>
+  <nav class="nav"><a class="nav-item" data-go="/" data-nav="/">🏠 Home</a>${navCats}
+  <a class="nav-item" data-go="/templates" data-nav="/templates">📚 Templates Library</a><a class="nav-item" data-go="/about" data-nav="/about">ℹ️ About</a><a class="nav-item" data-go="/help" data-nav="/help">🛟 Help &amp; Support</a></nav>
+  <div class="side-promos"><div class="pro-mini"><h4>👑 Upgrade to Pro</h4><p>Unlock premium features and remove limits.</p><button class="btn btn-primary btn-sm btn-block" data-go="/pricing">Go Pro</button></div><div class="study-card"><strong>Study Smarter. Achieve More.</strong><span>With StudyDesk</span></div></div></aside>
+  <div class="scrim" id="sc" data-act="menu"></div>
+  <div class="main-col"><header class="header no-print"><button class="icon-btn menu-btn" data-act="menu" aria-label="Menu">☰</button>
+  <div class="search"><div class="search-box">🔍<input id="q" placeholder="Search tools and templates…" autocomplete="off"><span class="kbd">Ctrl K</span></div><div class="dropdown" id="dd" style="display:none"></div></div>
+  <div style="flex:1"></div><div style="position:relative"><button class="icon-btn" data-act="bell">🔔<span class="dot"></span></button><div class="pop" id="bell" style="display:none"><h4>Notifications</h4><p>Welcome to StudyDesk. No account is needed to use any tool.</p><p>Your saved work stays in this browser on this device.</p></div></div>
+  <button class="btn btn-primary btn-sm" data-act="account">👤 <span class="search-hide-mobile">Login / Sign Up</span></button></header>
+  <main class="content" id="view"></main>
+  <footer class="footer no-print"><div class="footer-grid"><div><div class="brand-name">StudyDesk</div><p style="color:var(--muted);font-size:13.5px;max-width:320px;margin-top:8px">Academic templates, productivity tools, document editors and PDF utilities in one student workspace.</p></div>
+  <div><h4>Quick links</h4><a data-go="/">Home</a><a data-go="/templates">Templates Library</a><a data-go="/pricing">Go Pro</a><a data-go="/about">About</a></div>
+  <div><h4>Categories</h4>${categories.map((c) => `<a data-go="${c.path}">${c.title}</a>`).join('')}</div>
+  <div><h4>Support</h4><a data-go="/help">Help &amp; Support</a><a data-go="/privacy">Privacy Policy</a><a data-go="/terms">Terms of Use</a></div></div>
+  <div class="copyright">© ${new Date().getFullYear()} StudyDesk. All rights reserved.</div></footer></div></div>`;
+}
+let expanded = null;
+function syncNav(path) {
+  $$('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === path));
+  const t = tools.find((x) => toolPath(x) === path); const c = categories.find((x) => x.path === path);
+  const id = t ? t.cat : c ? c.id : null; if (id) expanded = id;
+  categories.forEach((x) => { $('#sub-' + x.id).classList.toggle('open', expanded === x.id); const b = $(`[data-cat="${x.id}"]`); b.classList.toggle('open', expanded === x.id); b.classList.toggle('active', id === x.id); });
+  $('#sb').classList.remove('open'); $('#sc').classList.remove('show');
+}
+
+/* ---------- search ---------- */
+let sel = 0, results = [];
+function drawSearch() {
+  const dd = $('#dd'), q = $('#q').value;
+  if (!q.trim()) { dd.style.display = 'none'; return; }
+  results = searchAll(q); dd.style.display = 'block';
+  dd.innerHTML = results.length ? results.map((r, i) => `<button class="result${i === sel ? ' sel' : ''}" data-act="pick" data-i="${i}"><span class="ri">${ico(r.icon)}</span><span><strong>${esc(r.title)}</strong><small>${esc(r.label)}</small></span></button>`).join('')
+    : `<div class="empty">No match for “${esc(q)}”. Try “PDF”, “CV” or “timetable”.</div>`;
+}
+function pick(i) { const r = results[i]; if (!r) return; go(r.path); $('#q').value = ''; $('#dd').style.display = 'none'; $('#q').blur(); }
+
+/* ---------- events ---------- */
+const A = {};
+document.addEventListener('click', (e) => {
+  const act = e.target.closest('[data-act]');
+  if (act && A[act.dataset.act]) { A[act.dataset.act](act, e); return; }
+  const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); go(g.dataset.go); }
+  if (!e.target.closest('.search')) { const d = $('#dd'); if (d) d.style.display = 'none'; }
+  if (!e.target.closest('#bell') && !e.target.closest('[data-act=bell]')) { const b = $('#bell'); if (b) b.style.display = 'none'; }
+});
+Object.assign(A, {
+  closeModal, menu() { $('#sb').classList.toggle('open'); $('#sc').classList.toggle('show'); },
+  toggleCat(el) { const id = el.dataset.cat; expanded = expanded === id ? null : id; syncNav(parseRoute().path); $('#sb').classList.add('open'); if (innerWidth > 900) $('#sb').classList.remove('open'); },
+  bell() { const b = $('#bell'); b.style.display = b.style.display === 'none' ? 'block' : 'none'; },
+  account() { modal('Accounts', '<p style="color:var(--muted);margin-bottom:14px">Accounts aren’t available yet, and you don’t need one. Every tool works right away, and anything you save stays in this browser on this device.</p><button class="btn btn-primary" data-act="closeModal">Got it</button>'); },
+  pick(el) { pick(Number(el.dataset.i)); },
+});
+document.addEventListener('keydown', (e) => {
+  const q = $('#q'); if (!q) return;
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.activeElement.isContentEditable;
+  if ((e.key === 'k' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !typing)) { e.preventDefault(); q.focus(); }
+  if (e.key === 'Escape') { closeModal(); $('#dd').style.display = 'none'; }
+  if (document.activeElement === q) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, results.length - 1); drawSearch(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); drawSearch(); }
+    if (e.key === 'Enter') pick(sel);
+  }
+});
+document.addEventListener('input', (e) => { if (e.target.id === 'q') { sel = 0; drawSearch(); } });
+window.addEventListener('resize', applyFit);
+
+/* ---------- shared cards ---------- */
+function tplCard(t) {
+  return `<div class="card tpl"><div class="tpl-ico">${ico(t.icon)}</div><h3>${esc(t.title)}</h3><div class="meta">${catById(t.cat).title}</div>
+  <div class="row"><button class="btn btn-sm" data-act="previewTool" data-slug="${t.slug}">👁 Preview</button><button class="btn btn-primary btn-sm" data-go="${toolPath(t)}">Use Template →</button></div></div>`;
+}
+function miniTool(t) { return `<button class="mini" data-go="${toolPath(t)}"><span class="tpl-ico" style="width:38px;height:38px">${ico(t.icon)}</span><span><strong>${esc(t.title)}</strong><small>${catById(t.cat).title}</small></span><span style="margin-left:auto;color:var(--muted)">›</span></button>`; }
+A.previewTool = (el) => {
+  const slug = el.dataset.slug, t = toolBySlug(slug);
+  let body;
+  if (FAMILIES[slug]) { const tp = FAMILIES[slug].templates[0]; body = fit(paperHtml(slug, makeDoc(slug, tp.id), styleFor(slug, tp.id))); }
+  else if (slug === 'cv-builder') body = fit(cvHtml(cvSample(), 'professional'));
+  else body = `<div class="paper" style="min-height:240px"><div style="text-align:center;font-weight:700;font-size:18px">${esc(t.title.toUpperCase())}</div><p style="margin-top:16px">${esc(t.desc)}</p></div>`;
+  modal(t.title + ' preview', `<div class="preview-scroll">${body}</div><div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end"><button class="btn" data-act="closeModal">Close</button><button class="btn btn-primary" data-act="useGo" data-go2="${toolPath(t)}">Use Template</button></div>`, true);
+};
+A.useGo = (el) => { closeModal(); go(el.dataset.go2); };
+
+/* ---------- home ---------- */
+function pageHome() {
+  const feat = ['assignment-template', 'project-writing-format', 'cv-builder', 'study-timetable', 'application-letter'].map(toolBySlug);
+  return `<section class="hero"><div style="position:relative;z-index:1"><h1>Your Ultimate <span class="gradient-text">Student Toolkit</span></h1><p>Access professional templates, powerful PDF tools, and smart productivity solutions — all in one place.</p>
+  <div class="hero-actions"><button class="btn btn-primary" data-act="scrollCats">🧭 Explore Tools</button><button class="btn" data-act="demo">▶ Watch Demo</button></div></div><div class="hero-art">${HERO_SVG}</div></section>
+  <section class="section" id="categories"><div class="section-head"><h2>Quick Access Categories</h2><button class="link" data-go="/templates">Browse All</button></div><div class="grid g5">
+  ${categories.map((c) => `<button class="cat c-${c.color}" data-go="${c.path}"><span class="ci" style="font-size:24px">${ico(c.icon)}</span><h3>${c.title}</h3><p>${c.desc}</p><span class="go">Explore</span></button>`).join('')}</div></section>
+  <section class="section"><div class="section-head"><h2>Featured Templates</h2><button class="link" data-go="/templates">View All Templates</button></div><div class="feature-row">
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr))">${feat.map(tplCard).join('')}</div>
+  <div class="promo"><div style="font-size:34px">👑</div><h3>Go Pro Today!</h3><p>Get premium features, remove limits and enjoy a better experience.</p><button class="btn btn-gold" data-go="/pricing">Upgrade Now</button></div></div></section>
+  <section class="section"><div class="trust"><div><span>⚡</span><span><strong>Fast &amp; Easy</strong><span>Open a tool and start</span></span></div><div><span>🛡️</span><span><strong>Secure &amp; Reliable</strong><span>Files stay on your device</span></span></div><div><span>📱</span><span><strong>Works on All Devices</strong><span>Phone, tablet, laptop</span></span></div><div><span>🎁</span><span><strong>Always Free</strong><span>No account needed</span></span></div></div></section>
+  <section class="section grid g2"><div><div class="section-head"><h2>Popular Tools</h2></div><div class="mini-list">${tools.filter((t) => t.popular).slice(0, 6).map(miniTool).join('')}</div></div>
+  <div><div class="section-head"><h2>Recently Added</h2></div><div class="mini-list">${tools.filter((t) => t.recent).slice(0, 6).map(miniTool).join('')}</div></div></section>
+  <section class="section"><div class="section-head"><h2>How StudyDesk Works</h2></div><div class="grid g3 steps">
+  ${[['Choose a tool', 'Pick a template or PDF tool from the sidebar or search.'], ['Upload or enter your information', 'Fill in the form or add your files.'], ['Download your finished document', 'Preview the result, then download it.']].map(([h, p], i) => `<div class="card"><div class="step-n">${i + 1}</div><div><h3 style="font-size:16px">${h}</h3><p style="color:var(--muted);font-size:14px;margin-top:4px">${p}</p></div></div>`).join('')}</div></section>`;
+}
+Object.assign(A, {
+  scrollCats() { const c = $('#categories'); if (c) c.scrollIntoView({ behavior: 'smooth' }); },
+  demo() { modal('How to use StudyDesk', `<ol style="color:var(--muted);padding-left:20px;display:grid;gap:10px;margin:0 0 16px"><li><strong style="color:var(--text)">Find a tool.</strong> Use the sidebar, or press Ctrl K and type “CV” or “merge”.</li><li><strong style="color:var(--text)">Fill it in.</strong> Enter details or add files. Nothing is uploaded.</li><li><strong style="color:var(--text)">Download.</strong> Check the live preview, then save or print.</li><li><strong style="color:var(--text)">Come back later.</strong> Work is saved in this browser.</li></ol><button class="btn btn-primary" data-act="demoGo">Start exploring</button>`); },
+  demoGo() { closeModal(); A.scrollCats(); },
+});
+
+/* ---------- category / library ---------- */
+function pageCategory(cat) {
+  const grid = (q) => { const l = toolsIn(cat.id).filter((t) => !q || `${t.title} ${t.desc} ${t.keywords}`.toLowerCase().includes(q.toLowerCase()));
+    return l.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">${l.map((t) => `<button class="card tpl" style="text-align:left" data-go="${toolPath(t)}"><div class="tpl-ico">${ico(t.icon)}</div><h3>${esc(t.title)}</h3><p style="color:var(--muted);font-size:13.5px">${esc(t.desc)}</p><span class="link" style="margin-top:auto">Open tool</span></button>`).join('')}</div>` : `<div class="notice"><h3>No tools match “${esc(q)}”</h3>Clear the search to see all tools.</div>`; };
+  window.__catGrid = grid;
+  return `${crumbs([{ label: cat.title }])}<h1 class="page-title">${cat.title}</h1><p class="page-sub">${cat.intro}</p><div class="filters"><div class="search-box" style="max-width:360px;flex:1">🔍<input id="catq" placeholder="Search ${cat.title.toLowerCase()}…"></div></div><div id="catgrid">${grid('')}</div>`;
+}
+const LIB = { filter: 'all', q: '', sort: 'featured' };
+function libGrid() {
+  let l = tools.filter((t) => t.template || t.cat === 'pdf'); const s = LIB.q.toLowerCase();
+  if (LIB.filter !== 'all') l = l.filter((t) => t.cat === LIB.filter);
+  if (s) l = l.filter((t) => `${t.title} ${t.desc} ${t.keywords}`.toLowerCase().includes(s));
+  const flag = (k) => (a, b) => (b[k] ? 1 : 0) - (a[k] ? 1 : 0);
+  if (LIB.sort === 'az') l = [...l].sort((a, b) => a.title.localeCompare(b.title)); else l = [...l].sort(flag(LIB.sort));
+  return l.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">${l.map(tplCard).join('')}</div>` : '<div class="notice"><h3>No templates found</h3>Try another filter or clear the search.</div>';
+}
+function pageLibrary() {
+  return `${crumbs([{ label: 'Templates Library' }])}<h1 class="page-title">Templates Library</h1><p class="page-sub">Every template and document tool in one place.</p>
+  <div class="filters" id="libchips">${[['all', 'All'], ['academic', 'Academic'], ['productivity', 'Productivity'], ['office', 'Office'], ['pdf', 'PDF-related']].map(([id, l]) => `<button class="chip${LIB.filter === id ? ' on' : ''}" data-act="libFilter" data-f="${id}">${l}</button>`).join('')}</div>
+  <div class="filters"><div class="search-box" style="max-width:360px;flex:1">🔍<input id="libq" value="${esc(LIB.q)}" placeholder="Search templates…"></div>
+  <select class="field" id="libsort"><option value="featured">Featured first</option><option value="popular">Most popular</option><option value="recent">Recently added</option><option value="az">A to Z</option></select></div><div id="libgrid">${libGrid()}</div>`;
+}
+A.libFilter = (el) => { LIB.filter = el.dataset.f; $$('#libchips .chip').forEach((c) => c.classList.toggle('on', c.dataset.f === LIB.filter)); $('#libgrid').innerHTML = libGrid(); };
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'catq') $('#catgrid').innerHTML = window.__catGrid(e.target.value);
+  if (e.target.id === 'libq') { LIB.q = e.target.value; $('#libgrid').innerHTML = libGrid(); }
+});
+document.addEventListener('change', (e) => { if (e.target.id === 'libsort') { LIB.sort = e.target.value; $('#libgrid').innerHTML = libGrid(); } });
+
+/* ---------- static pages ---------- */
+function pageAbout() {
+  return `${crumbs([{ label: 'About' }])}<h1 class="page-title">About StudyDesk</h1><p class="page-sub">StudyDesk is a student-focused digital workspace designed to make academic work, document preparation, and personal productivity easier.</p>
+  <div class="grid g2"><div class="card"><h3>Why StudyDesk exists</h3><p style="color:var(--muted);margin-top:8px">Students often visit several websites to format an assignment, merge a PDF and plan their week. StudyDesk puts those tasks in one place, built mainly for Nigerian university, polytechnic and college of education students.</p></div>
+  <div class="card"><h3>What you can do</h3><p style="color:var(--muted);margin-top:8px">Prepare academic documents, plan your study time, write CVs and letters, work with PDFs and edit documents. Everything runs in your browser.</p></div></div>
+  <div class="section-head section"><h2>The main categories</h2></div><div class="grid g5">${categories.map((c) => `<div class="cat c-${c.color}" style="min-height:0"><span class="ci" style="font-size:24px">${ico(c.icon)}</span><h3>${c.title}</h3><p>${c.desc}</p></div>`).join('')}</div>`;
+}
+const FAQ = [['What is StudyDesk?', 'A student workspace with academic templates, productivity tools, document editors and PDF utilities.'], ['Is StudyDesk free?', 'Yes. Every tool is free. The Pro plan is shown for information only; payments are not connected.'], ['Do I need an account?', 'No. Open any tool and start.'], ['Are my documents uploaded to a server?', 'No. Files are processed in your browser and never leave your device.'], ['How do I create a PDF?', 'Open a template or PDF tool, fill it in, then use Print / Save as PDF or the download button.'], ['Can I use StudyDesk on my phone?', 'Yes. The layout adapts to phones, with a slide-out menu.'], ['Can I save my timetable?', 'Yes. It saves in your browser on this device.'], ['How do I recover locally saved information?', 'Open the same browser on the same device. Clearing browsing data deletes saved work. This is not a cloud backup.']];
+function pageHelp() {
+  return `${crumbs([{ label: 'Help & Support' }])}<h1 class="page-title">Help &amp; Support</h1><p class="page-sub">Answers to common questions, and a contact form.</p>
+  <div class="faq">${FAQ.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('')}</div>
+  <div class="section card" style="max-width:640px"><h2 style="font-size:20px;margin-bottom:6px">Contact us</h2><p style="color:var(--muted);font-size:13.5px;margin-bottom:14px">This form only checks your entries. Email delivery needs a mail service, which hasn’t been connected yet, so messages are not sent.</p>
+  <div style="display:grid;gap:12px"><label class="lbl">Name<input class="field" id="cn"><span class="er" id="en" style="color:#fb7185"></span></label><label class="lbl">Email<input class="field" id="ce"><span class="er" id="ee" style="color:#fb7185"></span></label><label class="lbl">Message<textarea class="field" rows="4" id="cm"></textarea><span class="er" id="em" style="color:#fb7185"></span></label><button class="btn btn-primary" data-act="contact">Check message</button></div></div>`;
+}
+A.contact = () => {
+  const n = $('#cn').value.trim(), e = $('#ce').value, m = $('#cm').value.trim();
+  $('#en').textContent = n ? '' : 'Enter your name.'; $('#ee').textContent = /^\S+@\S+\.\S+$/.test(e) ? '' : 'Enter a valid email address.'; $('#em').textContent = m.length >= 10 ? '' : 'Write at least 10 characters.';
+  if (n && /^\S+@\S+\.\S+$/.test(e) && m.length >= 10) toast('Form is valid, but sending email isn’t set up yet.');
+};
+function pagePricing() {
+  return `${crumbs([{ label: 'Go Pro' }])}<h1 class="page-title">👑 Go Pro</h1><p class="page-sub">Pro is an idea for a future version. Payments are not connected, so nothing can be bought yet.</p>
+  <div class="grid g2" style="max-width:760px"><div class="card plan"><h3>Free</h3><div class="price">₦0</div><ul><li>All templates and tools</li><li>PDF tools in your browser</li><li>Saves locally on your device</li><li>No account needed</li></ul><button class="btn" disabled>Your current plan</button></div>
+  <div class="card plan" style="border-color:rgba(250,204,21,.5)"><h3>Pro (planned)</h3><div class="price">Not available</div><ul><li>Cloud backup of saved work</li><li>Higher file size limits</li><li>More template designs</li></ul><button class="btn btn-gold" disabled>Coming later</button></div></div>`;
+}
+function pageLegal(k) {
+  const T = { privacy: ['Privacy Policy', ['StudyDesk runs in your browser. Files you add to PDF tools are processed on your device and are not uploaded.', 'Saved work is stored in your browser’s local storage on this device. It is not sent anywhere and is not a cloud backup.', 'StudyDesk does not require an account and does not collect personal information.']], terms: ['Terms of Use', ['StudyDesk is provided as is, without warranty.', 'You are responsible for checking that documents meet your institution’s requirements before you submit them.', 'Keep your own copies of important files. Browser data can be cleared at any time.']] }[k];
+  return `${crumbs([{ label: T[0] }])}<h1 class="page-title">${T[0]}</h1><div class="section" style="max-width:680px;display:grid;gap:12px;color:var(--muted)">${T[1].map((p) => `<p>${p}</p>`).join('')}</div>`;
+}
+
+/* ---------- tool page + main render ---------- */
+const HOW = { academic: ['Choose a template, or start from a blank one.', 'Replace the example details with your own and edit the sections.', 'Check the live preview, then save, print / save as PDF, or download.'], productivity: ['Add your entries using the form.', 'Edit or delete entries any time. Changes save in this browser.', 'Print or save as PDF where available.'], office: ['Choose a design, or start blank.', 'Fill in your details and watch the preview update.', 'Save your draft, or print / save as PDF.'], pdf: ['Add your file(s).', 'Adjust the options.', 'Create the result and download it. Files never leave your device.'], editors: ['Pick a starting format, or a blank document.', 'Type and format with the toolbar.', 'Save, print / save as PDF, or download.'] };
+let cur = null;
+function pageTool(slug, q) {
+  const t = toolBySlug(slug); if (!t) return pageHome();
+  const cat = catById(t.cat);
+  const key = slug + '|' + (q.t || '') + '|' + (q.d || '');
+  const fresh = !cur || cur.key !== key; if (fresh) cur = { key };
+  let body;
+  if (FAMILIES[slug]) body = docTool(slug, q, fresh);
+  else if (slug === 'cv-builder') body = cvTool(q, fresh);
+  else if (/-editor$|^blank-document$/.test(slug)) body = richTool(slug, q, fresh);
+  else body = otherTool(slug);
+  return `<div class="no-print">${crumbs([{ label: cat.title, to: cat.path }, { label: t.title }])}<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px"><span class="tpl-ico" style="width:52px;height:52px;font-size:24px">${ico(t.icon)}</span><div><h1 class="page-title">${t.title}</h1><p style="color:var(--muted)">${t.desc}</p></div></div></div>
+  <div id="tool">${body}</div><div class="no-print"><div class="section card"><h3 style="margin-bottom:8px">How it works</h3><ol style="color:var(--muted);padding-left:20px;margin:0;display:grid;gap:4px;font-size:14px">${HOW[t.cat].map((h) => `<li>${h}</li>`).join('')}</ol></div>
+  <div class="section"><div class="section-head"><h2>Related tools</h2></div><div class="grid g4">${toolsIn(t.cat).filter((x) => x.slug !== slug).slice(0, 4).map(miniTool).join('')}</div></div></div>`;
+}
+function render() {
+  const { path, q } = parseRoute(); let html;
+  const cat = categories.find((c) => c.path === path);
+  if (path === '/') html = pageHome(); else if (cat) html = pageCategory(cat);
+  else if (path.startsWith('/tool/')) html = pageTool(path.slice(6), q);
+  else if (path === '/templates') html = pageLibrary(); else if (path === '/about') html = pageAbout(); else if (path === '/help') html = pageHelp();
+  else if (path === '/pricing') html = pagePricing(); else if (path === '/privacy') html = pageLegal('privacy'); else if (path === '/terms') html = pageLegal('terms');
+  else html = '<div class="notice" style="margin-top:40px"><h3>Page not found</h3><button class="btn btn-primary" data-go="/">Go home</button></div>';
+  $('#view').innerHTML = html; syncNav(path); window.scrollTo(0, 0);
+  if (path.startsWith('/tool/')) afterTool(path.slice(6)); applyFit();
+}
+function afterTool() { if (typeof afterToolHook === 'function') afterToolHook(); }
+const HERO_SVG = "<svg viewBox=\"0 0 380 300\">\n      <defs>\n        <linearGradient id=\"hg\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#A855F7\" /><stop offset=\"1\" stop-color=\"#2563EB\" /></linearGradient>\n      </defs>\n      <circle cx=\"190\" cy=\"150\" r=\"130\" fill=\"rgba(168,85,247,.12)\" />\n      <rect x=\"70\" y=\"60\" width=\"150\" height=\"190\" rx=\"14\" fill=\"#151D43\" stroke=\"#252B58\" transform=\"rotate(-8 145 155)\" />\n      <rect x=\"150\" y=\"50\" width=\"160\" height=\"200\" rx=\"14\" fill=\"#fff\" transform=\"rotate(6 230 150)\" />\n      <g transform=\"rotate(6 230 150)\" fill=\"#cfd3ea\">\n        <rect x=\"172\" y=\"78\" width=\"90\" height=\"10\" rx=\"5\" fill=\"#A855F7\" />\n        <rect x=\"172\" y=\"104\" width=\"116\" height=\"7\" rx=\"3.5\" /><rect x=\"172\" y=\"122\" width=\"100\" height=\"7\" rx=\"3.5\" />\n        <rect x=\"172\" y=\"140\" width=\"116\" height=\"7\" rx=\"3.5\" /><rect x=\"172\" y=\"158\" width=\"76\" height=\"7\" rx=\"3.5\" />\n        <rect x=\"172\" y=\"190\" width=\"54\" height=\"22\" rx=\"8\" fill=\"#2563EB\" />\n      </g>\n      <path d=\"M190 20 110 55l80 38 80-38z\" fill=\"url(#hg)\" />\n      <path d=\"M140 78v28c0 12 22 22 50 22s50-10 50-22V78l-50 24z\" fill=\"#F4F3FF\" opacity=\".92\" />\n      <path d=\"M270 55v36\" stroke=\"#FACC15\" stroke-width=\"4\" stroke-linecap=\"round\" /><circle cx=\"270\" cy=\"96\" r=\"6\" fill=\"#FACC15\" />\n      <circle cx=\"60\" cy=\"230\" r=\"5\" fill=\"#06B6D4\" /><circle cx=\"330\" cy=\"40\" r=\"4\" fill=\"#10B981\" /><circle cx=\"345\" cy=\"220\" r=\"6\" fill=\"#F59E0B\" />\n    </svg>";
+
+/* ===== Paper renderers (document templates) ===== */
+const hd = (text, i, st) => `<h3 class="pp-h hs-${st.hstyle}">${st.hstyle === 'numbered' ? (i + 1) + '. ' : ''}${esc(text)}</h3>`;
+const secsHtml = (doc, st) => doc.sections.map((s, i) => `<div class="pp-sec">${s.h ? hd(s.h, i, st) : ''}${s.b ? `<p class="pp-body">${esc(s.b)}</p>` : ''}</div>`).join('');
+function coverHtml(fam, doc, st) {
+  const v = (k) => doc.fields[k];
+  const org = fam.fields.find((x) => x.role === 'org'), title = fam.fields.find((x) => x.role === 'title');
+  const subs = fam.fields.filter((x) => x.role === 'sub' && v(x.k)), rest = fam.fields.filter((x) => !x.role && v(x.k));
+  const top = `${org && v(org.k) ? `<div class="pp-org">${esc(v(org.k))}</div>` : ''}${subs.map((x) => `<div class="pp-sub">${esc(v(x.k))}</div>`).join('')}`;
+  return `<div class="pp-cover head-${st.head} frame-${st.frame}">${st.head === 'band' ? `<div class="pp-band">${top}</div>` : `<div class="pp-orgblock">${top}</div>`}
+  <div class="pp-titlewrap">${title && v(title.k) ? `<div class="pp-title head-${st.head}">${esc(v(title.k))}</div>` : ''}</div>
+  <div class="pp-details">${rest.map((x) => `<div class="pp-row"><span>${esc(x.l)}</span><b>${esc(v(x.k))}</b></div>`).join('')}</div></div>`;
+}
+function letterHtml(fam, doc, st) {
+  const v = (k) => doc.fields[k] || '';
+  const sender = [v('s_addr'), v('s_email'), v('s_phone')].filter(Boolean), recip = [v('r_name'), v('r_org'), v('r_addr')].filter(Boolean);
+  const align = st.head === 'center' ? 'center' : st.head === 'boxed' ? 'right' : 'left';
+  const sb = `${v('s_name') ? `<div class="pp-lname">${esc(v('s_name'))}</div>` : ''}${sender.map((l) => `<div class="pp-lline">${esc(l)}</div>`).join('')}`;
+  return `<div class="pp-letter head-${st.head} frame-${st.frame}">${st.head === 'band' ? `<div class="pp-band lt">${sb}</div>` : `<div class="pp-sender" style="text-align:${align}">${sb}</div>`}
+  <div class="pp-ldate" style="text-align:${st.head === 'boxed' ? 'right' : 'left'}">${esc(v('date'))}</div><div class="pp-recip">${recip.map((l) => `<div>${esc(l)}</div>`).join('')}</div>
+  ${v('salute') ? `<div class="pp-salute">${esc(v('salute'))}</div>` : ''}${v('subject') ? `<div class="pp-subj hs-${st.hstyle}">${esc(v('subject'))}</div>` : ''}
+  ${doc.sections.map((s) => (s.b ? `<p class="pp-body">${esc(s.b)}</p>` : '')).join('')}${v('close') ? `<div class="pp-close">${esc(v('close'))}</div>` : ''}<div class="pp-sign">${esc(v('sign'))}</div></div>`;
+}
+function notesHtml(fam, doc, st) {
+  const title = fam.fields.find((x) => x.role === 'title'), rest = fam.fields.filter((x) => !x.role && doc.fields[x.k]);
+  const t = esc(doc.fields[title.k]);
+  return `<div class="pp-doc head-${st.head} frame-${st.frame}">${st.head === 'band' ? `<div class="pp-band"><div class="pp-org">${t}</div></div>` : `<div class="pp-doctitle" style="text-align:${st.head === 'center' ? 'center' : 'left'}"><div class="pp-title small">${t}</div></div>`}
+  ${rest.length ? `<div class="pp-meta">${rest.map((x) => `<div class="pp-row"><span>${esc(x.l)}</span><b>${esc(doc.fields[x.k])}</b></div>`).join('')}</div>` : ''}${secsHtml(doc, st)}</div>`;
+}
+function slidesHtml(fam, doc, st) {
+  const th = st.theme || { bg: '#fff', fg: '#222', accent: '#7c3aed' }, v = (k) => esc(doc.fields[k] || '');
+  const style = `background:${th.bg};color:${th.fg};font-family:${th.serif ? 'Georgia,serif' : 'inherit'}`;
+  return `<div class="pp-slides"><div class="pp-slide title" style="${style}"><div class="sl-title" style="color:${th.accent}">${v('topic')}</div><div class="sl-meta">${v('student')}</div><div class="sl-meta">${doc.fields.supervisor ? 'Supervisor: ' + v('supervisor') : ''}</div></div>
+  ${doc.sections.map((s, i) => `<div class="pp-slide" style="${style}"><div class="sl-head${th.bar ? ' bar' : ''}" style="${th.bar ? `background:${th.accent};color:#fff` : `color:${th.accent};border-bottom:3px solid ${th.accent}`}">${esc(s.h)}</div><div class="sl-body">${esc(s.b).split('\n').map((l) => `<div>${l}</div>`).join('')}</div><div class="sl-num">${i + 2}</div></div>`).join('')}</div>`;
+}
+function paperHtml(slug, doc, st) {
+  const fam = FAMILIES[slug], k = fam.kind; let inner = '';
+  if (k === 'cover') inner = coverHtml(fam, doc, st);
+  else if (k === 'report') inner = coverHtml(fam, doc, st) + (doc.sections.length ? `<div class="pp-pagebreak"></div><div class="pp-content">${secsHtml(doc, st)}</div>` : '');
+  else if (k === 'letter') inner = letterHtml(fam, doc, st); else if (k === 'doc') inner = notesHtml(fam, doc, st); else inner = slidesHtml(fam, doc, st);
+  return `<div class="paper pp font-${st.font}${k === 'slides' ? ' slides-wrap' : ''}" style="--accent:${st.accent}">${inner}</
